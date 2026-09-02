@@ -30,11 +30,18 @@ REQUIRED_COLUMNS = (
     "away_goals",
     "home_shots_target",
     "away_shots_target",
+    "home_np_xg",
+    "away_np_xg",
 )
 
 IDENTIFIER_COLUMNS = ("date", "season", "home_team", "away_team")
 
 WINDOW = 5
+
+# Beyond two weeks the gap stops measuring fatigue and starts encoding "this
+# team was relegated or absent": the raw maximum in the training seasons is 811
+# days. Capping keeps the fatigue signal and drops the parasite one.
+MAX_REST_DAYS = 14.0
 
 # What the model is allowed to read. Anything not listed here is context.
 FEATURE_COLUMNS = (
@@ -43,6 +50,8 @@ FEATURE_COLUMNS = (
     "goals_scored_diff_5",
     "goals_conceded_diff_5",
     "shots_target_diff_5",
+    "np_xg_created_diff_5",
+    "np_xg_conceded_diff_5",
     "rest_days_diff",
 )
 
@@ -53,6 +62,10 @@ _ROLLED = (
     ("goals_scored", "goals_for"),
     ("goals_conceded", "goals_against"),
     ("shots_target", "shots_target"),
+    # Non-penalty xG: the same underlying strength as goals, measured with far
+    # less variance, and the only genuinely new dimension in the dataset.
+    ("np_xg_created", "np_xg_for"),
+    ("np_xg_conceded", "np_xg_against"),
 )
 
 
@@ -66,6 +79,8 @@ def _team_match_table(matches: pl.DataFrame) -> pl.DataFrame:
         pl.col("home_goals").alias("goals_for"),
         pl.col("away_goals").alias("goals_against"),
         pl.col("home_shots_target").alias("shots_target"),
+        pl.col("home_np_xg").alias("np_xg_for"),
+        pl.col("away_np_xg").alias("np_xg_against"),
         pl.when(goal_diff > 0)
         .then(3)
         .when(goal_diff == 0)
@@ -80,6 +95,8 @@ def _team_match_table(matches: pl.DataFrame) -> pl.DataFrame:
         pl.col("away_goals").alias("goals_for"),
         pl.col("home_goals").alias("goals_against"),
         pl.col("away_shots_target").alias("shots_target"),
+        pl.col("away_np_xg").alias("np_xg_for"),
+        pl.col("home_np_xg").alias("np_xg_against"),
         pl.when(goal_diff < 0)
         .then(3)
         .when(goal_diff == 0)
@@ -114,6 +131,7 @@ def _rolling_history(matches: pl.DataFrame, window: int) -> pl.DataFrame:
         .over("team")
         .dt.total_days()
         .cast(pl.Float64)
+        .clip(upper_bound=MAX_REST_DAYS)
         .alias("rest_days"),
     )
 

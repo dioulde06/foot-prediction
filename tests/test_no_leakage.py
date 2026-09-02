@@ -12,7 +12,7 @@ from typing import Any, cast
 import polars as pl
 import pytest
 
-from src.features.build import FEATURE_COLUMNS, build_features
+from src.features.build import FEATURE_COLUMNS, MAX_REST_DAYS, build_features
 
 TEAMS = ("A", "B", "C", "D")
 START = dt.date(2020, 8, 1)
@@ -31,6 +31,8 @@ def _fixture(
         "away_goals": ag,
         "home_shots_target": 3 + hg,
         "away_shots_target": 3 + ag,
+        "home_np_xg": 0.4 + 0.3 * hg,
+        "away_np_xg": 0.4 + 0.3 * ag,
         "result": "H" if hg > ag else ("D" if hg == ag else "A"),
     }
 
@@ -86,6 +88,10 @@ def test_features_of_a_match_do_not_use_that_match_own_statistics() -> None:
         .then(20)
         .otherwise(pl.col("home_shots_target"))
         .alias("home_shots_target"),
+        pl.when(pl.col("date") == cutoff_date)
+        .then(5.0)
+        .otherwise(pl.col("home_np_xg"))
+        .alias("home_np_xg"),
     )
     cutoff = cutoff_date
 
@@ -159,3 +165,14 @@ def test_build_features_refuses_a_cutoff_before_the_first_match() -> None:
 def test_build_features_refuses_unsorted_input() -> None:
     with pytest.raises(ValueError, match="chronological"):
         build_features(_synthetic().sort("date", descending=True), LAST_DAY)
+
+
+def test_rest_days_are_capped_so_a_long_absence_is_not_a_feature() -> None:
+    """A team back after two years is not "well rested", it is a different team."""
+    rows = [
+        _fixture(0, "A", "B", 1, 0),
+        _fixture(100, "A", "C", 0, 0),  # 700 days later
+    ]
+    features = build_features(pl.DataFrame(rows).sort("date"), LAST_DAY)
+    late = features.filter(pl.col("date") == rows[-1]["date"])
+    assert late["rest_days_home"][0] == MAX_REST_DAYS
