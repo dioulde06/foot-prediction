@@ -64,8 +64,12 @@ Elles doivent être recalculées à chaque changement de dataset.
   `scikit-learn` pour la calibration.
 - Données en **parquet**, jamais en CSV dans le repo.
 - Type hints partout. `ruff` + `mypy` doivent passer.
-- Pas de notebook dans `src/`. Les notebooks sont exploratoires et jetables,
-  ils vivent dans `notebooks/` et ne sont jamais importés.
+- Pas de notebook dans `src/`. Les notebooks vivent dans `notebooks/` et ne
+  sont jamais importés. Ils sont **suivis dans git, exécutés, sorties
+  incluses** : ce sont eux qui portent l'analyse visuelle. Chaque figure est
+  aussi exportée en PNG dans `reports/figures/` via le helper `savefig()`,
+  pour que les visuels survivent hors du notebook. Ça remplace la consigne
+  du Prompt 1.1 qui les excluait du dépôt.
 
 ## Structure
 
@@ -102,13 +106,30 @@ Si tu rencontres un nom non mappé, lève une exception. Ne devine pas.
 - Pas de `try/except` silencieux. Si les données sont mauvaises, ça doit
   planter.
 - Commits atomiques, messages en anglais, format conventionnel
-  (`feat:`, `fix:`, `test:`, `refactor:`).
+  (`feat:`, `fix:`, `test:`, `refactor:`). Tu me les **proposes**, tu ne
+  les exécutes pas.
 - Réponds-moi en français, commentaires et docstrings en anglais.
+- **Tiens `README.md` à jour.** Dès qu'on ajoute, modifie ou termine quelque
+  chose — un module, une phase, une source de données, une commande, une
+  dépendance — le README doit refléter l'état réel du projet dans la même
+  session. Il décrit ce qui existe, jamais ce qui est prévu.
 
 ## Ce que tu ne fais pas sans me demander
 
+Tu attends mon accord explicite. Tu me montres ce que tu vas faire, puis
+tu t'arrêtes.
+
+- **Commiter, amender un commit, ou pousser quoi que ce soit.** Tu prépares
+  le message et tu me le soumets, c'est moi qui décide quand ça part.
 - Ajouter une dépendance
 - Modifier `build_features` ou la logique de split
 - Supprimer ou réécrire un test existant
 - Lancer un entraînement long (> 2 min)
 - Toucher à `data/raw/`
+
+## Ce dont tu me préviens avant de le faire
+
+Pas besoin de mon accord ici, mais annonce-le avant, jamais après coup.
+
+- **Lancer les tests** (`pytest`, `make test`) : dis-moi ce que tu vas
+  lancer et pourquoi avant de le faire.
