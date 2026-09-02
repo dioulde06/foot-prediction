@@ -14,7 +14,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 0 | Fondations (log-loss, Brier, ECE, dévigorisation) | exercices en cours dans `JOURNAL.md` |
 | 1 | Squelette, ingestion, mapping des noms | football-data ingéré ; FBref/Understat en attente |
 | 1bis | Audit de qualité des données | fait — `notebooks/01_audit_qualite.ipynb` |
-| 2 | Baselines et métriques | à faire |
+| 2 | Baselines et métriques | fait — voir le tableau ci-dessous |
 | 2bis | Exploration du signal (train uniquement) | à faire |
 | 3 | Features (Elo, rolling, non-fuite) | à faire |
 | 4 | Modèle LightGBM et calibration isotonique | à faire |
@@ -52,6 +52,9 @@ make lint      # ruff + mypy strict
 make train     # phase 4, pas encore implémenté
 make eval      # phase 5, pas encore implémenté
 
+uv run python scripts/run_baselines.py            # tableau des 3 baselines
+uv run python scripts/run_baselines.py --book ps  # contrôle croisé Pinnacle
+
 uv run jupyter lab notebooks/01_audit_qualite.ipynb
 ```
 
@@ -62,7 +65,8 @@ src/
   data/       ingestion (fetch.py), normalisation des noms d'équipes
   features/   build_features(), Elo, rolling windows
   models/     entraînement, calibration
-  eval/       baselines, métriques, walk-forward
+  eval/       metrics.py, baselines.py, splits.py, walk-forward
+scripts/      run_baselines.py
 tests/
 notebooks/    analyses exécutées, suivies dans git
 reports/
@@ -81,11 +85,42 @@ dataset.
 |---|---|
 | `uniform` | Fréquences historiques 1X2, calculées sur le train uniquement |
 | `home` | Toujours victoire à domicile |
-| `market` | Cotes de clôture dévigorisées — référence haute, probablement imbattable |
+| `market` | Cotes de clôture dévigorisées (`avg` par défaut) — référence haute, probablement imbattable |
 
-Repère utile : ne rien savoir en 1X2 vaut `ln(3) = 1.0986` de log-loss. Un bon
-modèle vise 0.98-1.02, le marché 0.95-0.98. Toute la partie se joue dans une
-bande de 0.15.
+`uniform` est ajustée sur le **train uniquement**. Calculée sur tout le dataset,
+la baseline connaîtrait la saison de test et deviendrait artificiellement forte.
+
+`home` est une prédiction dure `(1, 0, 0)`, volontairement non adoucie : sous
+log-loss, une certitude fausse est catastrophique, et c'est précisément ce
+qu'elle doit montrer. Son log-loss est un avertissement, jamais une cible.
+
+La dévigorisation est multiplicative, `p_i = (1/o_i) / Σ(1/o_j)`. Elle suppose
+la marge répartie proportionnellement, ce qui est empiriquement faux — les
+bookmakers en chargent davantage sur les outsiders. Plafond connu et documenté.
+
+### Résultats mesurés sur 2025-26 (1 751 matchs, cotes `avg`)
+
+| Baseline | log-loss | Brier | ECE | accuracy* |
+|---|---|---|---|---|
+| `uniform` | 1.0721 | 0.6485 | 0.0078 | 44.0 % |
+| `home` | **19.3307** | 1.1194 | 0.3731 | 44.0 % |
+| `market` | **0.9778** | 0.5823 | 0.0118 | 53.5 % |
+
+\* information seulement, ne décide de rien.
+
+Ne rien savoir vaut `ln(3) = 1.0986`. **Le terrain de jeu fait 0.094 de large** :
+tout modèle utile atterrira entre 1.0721 et 0.9778. L'entropie moyenne des
+probabilités du marché vaut 0.9951, ce qui estime le plancher sous lequel un
+log-loss n'est plus honnête.
+
+Deux lectures à retenir de ce tableau :
+
+- `home` et `uniform` ont **exactement la même accuracy** (44.0 %) pour un
+  log-loss de 19.33 contre 1.07. C'est la démonstration que l'accuracy ne
+  mesure pas ce qui nous intéresse.
+- `uniform` est **mieux calibrée** que le marché (ECE 0.0078 contre 0.0118) tout
+  en étant inutile : elle dit toujours la même chose. Un bon ECE sans pouvoir
+  discriminant ne vaut rien — ne jamais optimiser l'ECE seul.
 
 ## Garde-fou
 
