@@ -1,0 +1,48 @@
+[project]
+name = "foot-prediction"
+version = "0.1.0"
+description = "Calibrated 1X2 probability model for the big five European leagues"
+requires-python = "==3.11.*"
+dependencies = [
+    "polars>=1.0",
+    "pyarrow>=17",
+    "lightgbm>=4.5",
+    "scikit-learn>=1.5",
+    "soccerdata>=1.8",
+    "pyyaml>=6",
+    "matplotlib>=3.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-pyyaml",
+    "pandas-stubs",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RET", "PTH"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN", "E501"]  # CSV fixtures are long by nature
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+disallow_any_explicit = false
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["soccerdata.*", "lightgbm.*", "matplotlib.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
