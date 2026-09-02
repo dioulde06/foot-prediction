@@ -1,0 +1,27 @@
+# LightGBM hyperparameters. Deliberately small: about 6 800 usable training
+# rows carrying two effective feature dimensions do not support a large model,
+# and an overfitted booster shows up as a log-loss below the entropy floor.
+params:
+  objective: multiclass
+  num_class: 3
+  metric: multi_logloss
+  learning_rate: 0.03
+  num_leaves: 15
+  max_depth: 4
+  min_data_in_leaf: 120
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  lambda_l2: 5.0
+  verbose: -1
+  num_threads: 4
+  seed: 42
+  deterministic: true
+
+training:
+  num_boost_round: 3000
+  # Stops on the validation log-loss, never on the training one.
+  early_stopping_rounds: 150
+  # Exponential sample weights: a match this many seasons old counts half.
+  # Football changes slowly, so 2 seasons is a mild discount, not a purge.
+  half_life_seasons: 2.0

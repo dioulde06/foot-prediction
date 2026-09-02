@@ -32,7 +32,7 @@ from src.eval.metrics import (
 from src.eval.splits import TEST_SEASON, chronological_split
 
 LOG = logging.getLogger(__name__)
-PARQUET = Path("data/raw/football_data.parquet")
+PARQUET = Path("data/processed/matches.parquet")
 
 
 def main() -> None:
