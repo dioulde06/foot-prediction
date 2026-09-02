@@ -26,6 +26,7 @@ LOG = logging.getLogger(__name__)
 
 RAW_DIR = Path("data/raw")
 FOOTBALL_DATA_PARQUET = RAW_DIR / "football_data.parquet"
+UNDERSTAT_PARQUET = RAW_DIR / "understat.parquet"
 
 BASE_URL = "https://www.football-data.co.uk/mmz4281"
 USER_AGENT = "foot-prediction/0.1 (research; contact via github.com/dioulde06)"
@@ -41,6 +42,33 @@ LEAGUES: dict[str, str] = {
     "D1": "Bundesliga",
     "I1": "Serie A",
     "F1": "Ligue 1",
+}
+
+# soccerdata league key -> our canonical league label.
+UNDERSTAT_LEAGUES: dict[str, str] = {
+    "ENG-Premier League": "Premier League",
+    "ESP-La Liga": "La Liga",
+    "GER-Bundesliga": "Bundesliga",
+    "ITA-Serie A": "Serie A",
+    "FRA-Ligue 1": "Ligue 1",
+}
+
+# Understat column -> canonical column. np_xg is xG excluding penalties, which
+# is what a model should use: penalties are rare and not a repeatable skill.
+UNDERSTAT_COLUMNS: dict[str, str] = {
+    "league": "league",
+    "season": "season",
+    "date": "date",
+    "home_team": "home_team",
+    "away_team": "away_team",
+    "home_xg": "home_xg",
+    "away_xg": "away_xg",
+    "home_np_xg": "home_np_xg",
+    "away_np_xg": "away_np_xg",
+    "home_ppda": "home_ppda",
+    "away_ppda": "away_ppda",
+    "home_deep_completions": "home_deep",
+    "away_deep_completions": "away_deep",
 }
 
 # Source column -> canonical column. Anything else in the CSV is dropped.
@@ -231,24 +259,96 @@ def fetch_football_data(*, force: bool = False) -> pl.DataFrame:
 def fetch_fbref(*, force: bool = False) -> pl.DataFrame:
     """Match results and shooting stats from FBref, via soccerdata.
 
-    Deferred on purpose: scraping 6 seasons x 5 leagues blows past the 2 min
-    budget in CLAUDE.md and needs an explicit go-ahead first.
+    Not implemented, and deliberately so. soccerdata 1.9.1 only exposes
+    schedule / keeper / shooting / misc for FBref team match logs -- the
+    passing, possession and defensive tables that used to justify the source
+    are gone -- and its access path needs a browser driver. Everything it would
+    still bring is already covered by Understat, at a fraction of the cost and
+    with one fewer team-name mapping to maintain.
     """
-    raise NotImplementedError("fetch_fbref: awaiting go-ahead, see PLAN.md phase 1")
+    raise NotImplementedError(
+        "fetch_fbref: superseded by fetch_understat, see PLAN.md phase 1"
+    )
 
 
 def fetch_understat(*, force: bool = False) -> pl.DataFrame:
-    """Per-match xG from Understat, via soccerdata. Deferred, same reason."""
-    raise NotImplementedError("fetch_understat: awaiting go-ahead, see PLAN.md phase 1")
+    """Per-match xG for the big five leagues, one row per match.
+
+    xG is the only genuinely new dimension available on top of
+    football-data.co.uk: goals are a very noisy realisation of a team's
+    strength, xG measures the same thing with far less variance.
+
+    Cached: returns the existing parquet untouched unless `force` is set.
+    """
+    if UNDERSTAT_PARQUET.exists() and not force:
+        LOG.info("cache hit, reading %s", UNDERSTAT_PARQUET)
+        return pl.read_parquet(UNDERSTAT_PARQUET)
+
+    import soccerdata as sd  # heavy import, only needed on a real fetch
+
+    seasons = [season_code(y) for y in range(FIRST_SEASON, LAST_SEASON + 1)]
+    reader = sd.Understat(leagues=list(UNDERSTAT_LEAGUES), seasons=seasons)
+    raw = pl.from_pandas(reader.read_team_match_stats().reset_index())
+
+    missing = [c for c in UNDERSTAT_COLUMNS if c not in raw.columns]
+    if missing:
+        raise ValueError(f"Understat is missing columns {missing}")
+
+    season_labels = {
+        season_code(y): season_label(y) for y in range(FIRST_SEASON, LAST_SEASON + 1)
+    }
+    matches: pl.DataFrame = (
+        raw.select(list(UNDERSTAT_COLUMNS))
+        .rename(UNDERSTAT_COLUMNS)
+        .with_columns(
+            pl.col("date").cast(pl.Date),
+            pl.col("league").replace_strict(UNDERSTAT_LEAGUES),
+            pl.col("season").replace_strict(season_labels),
+        )
+        .sort("date", "home_team")
+    )
+
+    for row in (
+        matches.group_by("league", "season")
+        .agg(pl.len().alias("n"))
+        .sort("league", "season")
+    ).iter_rows(named=True):
+        LOG.info("%-15s %s: %3d matches", row["league"], row["season"], row["n"])
+
+    for column in ("home_xg", "away_xg", "home_np_xg", "away_np_xg"):
+        nulls = matches[column].null_count()
+        if nulls:
+            raise ValueError(
+                f"{nulls} null {column!r} rows: Understat data is incomplete"
+            )
+
+    key = ("date", "home_team", "away_team")
+    duplicates = matches.filter(matches.select(key).is_duplicated())
+    if duplicates.height:
+        raise ValueError(f"duplicate (date, home, away) keys:\n{duplicates}")
+
+    LOG.info(
+        "total: %d matches, %d teams", matches.height, matches["home_team"].n_unique()
+    )
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    matches.write_parquet(UNDERSTAT_PARQUET)
+    LOG.info("wrote %s", UNDERSTAT_PARQUET)
+    return matches
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--force", action="store_true", help="refetch even if cached")
+    parser.add_argument(
+        "--source", default="all", choices=["all", "football-data", "understat"]
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-    fetch_football_data(force=args.force)
+    if args.source in ("all", "football-data"):
+        fetch_football_data(force=args.force)
+    if args.source in ("all", "understat"):
+        fetch_understat(force=args.force)
 
 
 if __name__ == "__main__":
