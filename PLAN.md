@@ -91,6 +91,43 @@ Durée : 2-3 sessions (le mapping prend du temps, c'est normal).
 
 ---
 
+## Phase 1bis — Audit de qualité (notebook, tout le dataset)
+
+Connaître ses données avant de les modéliser. Porte sur **tout** le
+dataset, saison de test incluse : constater qu'une colonne est à moitié
+vide ne t'apprend rien sur comment prédire, donc ça ne leake pas.
+
+**Ce que tu dois comprendre**
+- La différence entre regarder la **qualité** d'une donnée et regarder le
+  **signal** qu'elle porte. La première est libre, la seconde est
+  contrainte au train (voir Phase 2bis).
+- Qu'une anomalie de données ne se voit presque jamais dans un score de
+  modèle : elle se voit dans un histogramme.
+
+**Contenu**
+- Nulls et couverture de chaque colonne, par ligue et par saison
+- Distributions : buts, tirs, tirs cadrés, corners
+- Fréquences 1X2 par ligue et par saison, et leur dispersion
+- Avantage domicile dans le temps — regarde 2020-21 de près
+- Overround par bookmaker (`avg`, `b365`, `ps`)
+- Nombre de matchs par équipe-saison : tout écart à 34/38 est un bug
+- Doublons, dates aberrantes, trous de calendrier
+
+**Ta part**
+- Tu produis la liste des anomalies que tu repères, et tu décides
+  lesquelles bloquent la suite et lesquelles sont acceptables.
+
+**Checkpoint** — tu m'expliques pourquoi la saison 2020-21 est à part et
+ce que ça implique pour l'entraînement.
+
+**Sortie** — les anomalies retenues, notées dans `JOURNAL.md`. Le
+notebook est jetable et gitignoré, donc ce qui n'est pas écrit dans le
+journal est perdu.
+
+Durée : 1 session.
+
+---
+
 ## Phase 2 — Baselines et métriques
 
 Prompt 2.1.
@@ -122,6 +159,51 @@ même à quelque chose.
 jusqu'à la fin. Il est recalculé à chaque changement de dataset.
 
 Durée : 1 session.
+
+---
+
+## Phase 2bis — Exploration du signal (notebook, TRAIN uniquement)
+
+Choisir ses features avec ses yeux, sans tricher. Le notebook est filtré
+en dur sur les saisons d'entraînement : 2020-21 à 2023-24. Valid et test
+n'y entrent pas.
+
+**Ce que tu dois comprendre**
+- **La fuite par l'analyste.** Choisir une feature après avoir vu son
+  comportement sur le test, c'est du surapprentissage manuel. Aucun test
+  automatique ne l'attrape, parce qu'elle passe par toi et pas par le
+  code. Le seul remède est de ne pas regarder.
+- **Les colonnes brutes ne sont pas des features.** Tirs, corners,
+  possession sont des *résultats* du match : les utiliser pour prédire ce
+  même match est la fuite du chapitre 1 de CLAUDE.md. La seule question
+  utile est donc : est-ce que leur version **décalée** — moyenne sur les
+  N matchs précédents — prédit le match suivant ?
+- Qu'une corrélation sur 7 000 lignes se trouve toujours, et ne veut
+  presque jamais dire quelque chose.
+
+**Contenu**
+- La calibration du marché lui-même : dévigorise les cotes, découpe en
+  tranches, compare au réalisé. C'est le meilleur exercice du projet et
+  ça te donne la cible à viser.
+- Autocorrélation : la performance passée d'une équipe prédit-elle la
+  suivante, et sur quel horizon ?
+- Lift des rolling par taille de fenêtre (3, 5, 10) : où ça sature.
+- Corrélations entre features candidates, pour repérer les redondances.
+- Avantage domicile par ligue.
+
+**Ta part**
+- **Avant** d'ouvrir le notebook, tu classes les features candidates de
+  la plus à la moins prometteuse. Écrit dans le journal. Puis tu compares
+  à ce que montrent les données.
+- Tu choisis les 6 features de départ de la Phase 3.
+
+**Checkpoint** — tu m'expliques la fuite par l'analyste, et pourquoi
+aucun test unitaire ne peut la détecter.
+
+**Sortie** — la liste ordonnée des features de départ, dans
+`JOURNAL.md`, avec pour chacune une ligne de justification.
+
+Durée : 1-2 sessions.
 
 ---
 
