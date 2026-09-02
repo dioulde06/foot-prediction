@@ -1,4 +1,4 @@
-.PHONY: install lint test fetch baselines train eval
+.PHONY: install lint test fetch merge audit-teams baselines train eval
 
 install:
 	uv sync
@@ -14,6 +14,14 @@ test:
 # Odds + results from football-data.co.uk. FORCE=1 to refetch.
 fetch:
 	uv run python -m src.data.fetch $(if $(FORCE),--force,)
+
+# Join the sources into data/processed/matches.parquet.
+merge:
+	uv run python -m src.data.merge $(if $(FORCE),--force,)
+
+# Team names of each source, and the ones that still need a mapping entry.
+audit-teams:
+	uv run python -m scripts.audit_teams
 
 # Comparative table of the three baselines on the test season.
 baselines:
