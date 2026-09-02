@@ -8,6 +8,7 @@ import pytest
 
 from src.eval.baselines import (
     devig_multiplicative,
+    devig_power,
     home_baseline,
     market_baseline,
     uniform_baseline,
@@ -73,7 +74,7 @@ def test_market_baseline_reads_the_chosen_book() -> None:
             "odds_close_avg_a": [3.60],
         }
     )
-    probs = market_baseline(frame, book="avg")
+    probs = market_baseline(frame, book="avg", method="multiplicative")
     assert probs.sum() == pytest.approx(1.0)
     assert probs[0, 0] == pytest.approx(0.4543, abs=1e-4)
 
@@ -98,3 +99,64 @@ def test_a_perfectly_calibrated_uniform_baseline_scores_ln_3_when_classes_are_eq
     train = pl.DataFrame({"result": ["H", "D", "A"] * 10})
     probs = uniform_baseline(train, n_rows=3)
     assert log_loss(probs, ["H", "D", "A"]) == pytest.approx(math.log(3))
+
+
+# --- power devigorisation -------------------------------------------------
+
+
+def test_power_devig_always_sums_to_one() -> None:
+    odds = np.array([[1.30, 6.00, 8.50], [2.25, 3.50, 2.90], [2.10, 3.40, 3.60]])
+    assert devig_power(odds).sum(axis=1) == pytest.approx(np.ones(3))
+
+
+def test_power_devig_is_the_identity_when_there_is_no_margin() -> None:
+    # 3.0 / 3.0 / 3.0 implies exactly 1/3 each, so the exponent must stay at 1.
+    probs = devig_power(np.array([[3.0, 3.0, 3.0]]))
+    assert probs[0].tolist() == pytest.approx([1 / 3, 1 / 3, 1 / 3])
+
+
+def test_power_devig_preserves_the_ranking_of_the_odds() -> None:
+    probs = devig_power(np.array([[1.30, 6.00, 8.50]]))
+    assert probs[0, 0] > probs[0, 1] > probs[0, 2]
+
+
+def test_power_devig_gives_the_favourite_more_than_the_multiplicative_method() -> None:
+    # The whole point: the margin sits on the longshots, so removing it
+    # proportionally leaves the favourite short. Measured on real 2025-26 data.
+    odds = np.array([[1.30, 6.00, 8.50]])
+    favourite_power = devig_power(odds)[0, 0]
+    favourite_mult = devig_multiplicative(odds)[0, 0]
+    assert favourite_power > favourite_mult
+    # ...and the longshot correspondingly less.
+    assert devig_power(odds)[0, 2] < devig_multiplicative(odds)[0, 2]
+
+
+def test_power_devig_correction_grows_with_the_margin() -> None:
+    # Same prices, one with a fat margin, one with a thin one.
+    thin = np.array([[1.32, 5.80, 8.20]])
+    fat = np.array([[1.25, 5.20, 7.20]])
+
+    def gap(odds: np.ndarray) -> float:
+        return float(devig_power(odds)[0, 0] - devig_multiplicative(odds)[0, 0])
+
+    assert gap(fat) > gap(thin) > 0
+
+
+def test_power_devig_rejects_an_incoherent_row() -> None:
+    with pytest.raises(ValueError, match="below 1"):
+        devig_power(np.array([[8.70, 5.79, 1.56]]))
+
+
+def test_market_baseline_accepts_both_methods() -> None:
+    frame = pl.DataFrame(
+        {
+            "odds_close_avg_h": [1.30],
+            "odds_close_avg_d": [6.00],
+            "odds_close_avg_a": [8.50],
+        }
+    )
+    mult = market_baseline(frame, book="avg", method="multiplicative")
+    power = market_baseline(frame, book="avg", method="power")
+    assert power[0, 0] > mult[0, 0]
+    with pytest.raises(ValueError, match="unknown devig method"):
+        market_baseline(frame, book="avg", method="magic")

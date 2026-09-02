@@ -38,6 +38,12 @@ PARQUET = Path("data/raw/football_data.parquet")
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--book", default="avg", choices=["avg", "b365", "ps"])
+    parser.add_argument(
+        "--method",
+        default="power",
+        choices=["power", "multiplicative"],
+        help="devigorisation method for the market baseline",
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -63,7 +69,9 @@ def main() -> None:
     predictions = {
         "uniform": uniform_baseline(train, n_rows=test.height),
         "home": home_baseline(n_rows=test.height),
-        f"market ({args.book})": market_baseline(test, book=args.book),
+        f"market ({args.book}, {args.method})": market_baseline(
+            test, book=args.book, method=args.method
+        ),
     }
 
     rows = [
@@ -82,11 +90,13 @@ def main() -> None:
     print("\nRappel : ne rien savoir en 1X2 vaut ln(3) = 1.0986.")
     print("L'accuracy est affichee pour information et ne decide de rien.")
 
-    market = predictions[f"market ({args.book})"]
+    market = predictions[f"market ({args.book}, {args.method})"]
     with pl.Config(tbl_hide_dataframe_shape=True, tbl_width_chars=120):
-        print(f"\n=== Calibration du marche ({args.book}) par tranche ===")
+        print(
+            f"\n=== Calibration du marche ({args.book}, {args.method}) par tranche ==="
+        )
         print(calibration_bins(market, outcomes))
-        print(f"\n=== Biais par classe ({args.book}) ===")
+        print(f"\n=== Biais par classe ({args.book}, {args.method}) ===")
         print(class_bias(market, outcomes))
 
     # Mean entropy of the market probabilities: the best empirical estimate of
