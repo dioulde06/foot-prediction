@@ -17,9 +17,9 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 2 | Baselines et métriques | fait — voir le tableau ci-dessous |
 | 2bis | Exploration du signal (train uniquement) | fait — `notebooks/02_analyse.ipynb` |
 | 3 | Features (Elo, rolling, non-fuite) | fait — 6 features, 20 tests de non-fuite et d'invariance |
-| 4 | Modèle LightGBM et calibration isotonique | à faire |
-| 5 | Validation walk-forward | à faire |
-| 6 | App de publication et suivi | à faire |
+| 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
+| 5 | Validation walk-forward | fait — stable sur 4 saisons |
+| 6 | App de publication et suivi | fait — `make publish` / `make track` |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
 dans [`PLAN.md`](PLAN.md).
@@ -62,8 +62,10 @@ make install   # uv sync
 make fetch     # télécharge les données (FORCE=1 pour ignorer le cache)
 make test      # pytest
 make lint      # ruff + mypy strict
-make train     # phase 4, pas encore implémenté
-make eval      # phase 5, pas encore implémenté
+make train     # entraîne, calibre, écrit reports/model_report.md
+make eval      # walk-forward + saturation de l'historique
+make publish   # prédit les matchs à venir, append-only
+make track     # calibration des prédictions publiées, une fois jouées
 
 uv run python scripts/run_baselines.py            # tableau des 3 baselines
 uv run python scripts/run_baselines.py --book ps  # contrôle croisé Pinnacle
@@ -78,19 +80,28 @@ uv run jupyter lab notebooks/
 
 ```
 src/
-  data/       ingestion (fetch.py), normalisation des noms d'équipes
+  data/       fetch.py, merge.py, team_mapping.py
   features/   build.py (build_features), elo.py
-  models/     entraînement, calibration
-  eval/       metrics.py, baselines.py, splits.py, walk-forward
-scripts/      run_baselines.py
+  models/     train.py, calibrate.py
+  eval/       metrics.py, baselines.py, splits.py, report.py, walk_forward.py
+  app/        publish.py — publication et réconciliation
+configs/      lightgbm.yaml
+scripts/      run_baselines, train_and_report, run_walk_forward, publish,
+              track_calibration, audit_teams
 tests/
 notebooks/    analyses exécutées, suivies dans git
+predictions/  historique append-only des prédictions publiées, suivi dans git
 reports/
   figures/    figures exportées en PNG
 data/
   raw/        parquet brut par source (gitignoré)
-  processed/   dataset final matchs x features (gitignoré)
+  processed/  dataset joint (gitignoré)
+models/       modèle entraîné et métadonnées (gitignoré)
 ```
+
+`src/app/` et `configs/` ne figurent pas dans la structure décrite par
+`CLAUDE.md` : la publication n'est ni de l'ingestion, ni des features, ni de
+l'évaluation, et les hyperparamètres devaient sortir du code.
 
 ## Les trois baselines
 
@@ -153,7 +164,45 @@ La dévigorisation est multiplicative, `p_i = (1/o_i) / Σ(1/o_j)`. Elle suppose
 la marge répartie proportionnellement, ce qui est empiriquement faux — les
 bookmakers en chargent davantage sur les outsiders. Plafond connu et documenté.
 
-### Résultats mesurés sur 2025-26 (1 751 matchs, cotes `avg`)
+### Le modèle, mesuré sur 2025-26 (1 751 matchs)
+
+| modèle | log-loss | Brier | ECE | accuracy* |
+|---|---|---|---|---|
+| modèle brut | 1.0049 | 0.5992 | 0.0145 | 51.5 % |
+| modèle + isotonique | 1.0193 | 0.6006 | 0.0136 | 50.4 % |
+| **modèle + température** | **1.0044** | **0.5989** | **0.0106** | 51.5 % |
+| `market` | 0.9769 | 0.5818 | 0.0086 | 53.5 % |
+
+Le modèle capture **71 %** de l'écart disponible entre `uniform` et `market`, et
+reste 0.028 derrière le marché.
+
+**La calibration isotonique dégrade le modèle** (1.0049 → 1.0193). Non
+paramétrique, elle est assez souple pour apprendre le bruit d'une seule saison
+de validation. La mise à l'échelle par température — un seul paramètre,
+`p_i^(1/T)` avec `T = 1.036` — améliore les deux métriques à la fois. Un
+paramètre ne peut pas surapprendre une saison.
+
+### Stabilité en walk-forward
+
+| saison de test | log-loss modèle | log-loss market | écart |
+|---|---|---|---|
+| 2022-23 | 1.0106 | 0.9753 | +0.0353 |
+| 2023-24 | 0.9891 | 0.9521 | +0.0370 |
+| 2024-25 | 0.9925 | 0.9600 | +0.0325 |
+| 2025-26 | 1.0044 | 0.9769 | +0.0275 |
+
+Amplitude du log-loss : **0.0215**. L'écart au marché reste entre +0.0275 et
++0.0370 sur quatre saisons, toujours du même signe et du même ordre. Cette
+constance est l'argument le plus fort que le résultat est réel : une
+fluctuation heureuse ne se reproduit pas quatre fois de suite.
+
+Aucune moyenne n'est publiée volontairement — c'est la dispersion qui informe.
+
+Le balayage de l'historique donne 1.0073 / 1.0050 / 1.0038 / 1.0044 pour 1, 2, 3
+et 4 saisons d'entraînement. **Le gain sature à 3 saisons**, soit environ 5 400
+matchs. Plus de données n'est pas le levier.
+
+### Les baselines mesurées sur 2025-26 (1 751 matchs, cotes `avg`)
 
 | Baseline | log-loss | Brier | ECE | accuracy* |
 |---|---|---|---|---|
@@ -188,6 +237,38 @@ Deux lectures à retenir de ce tableau :
 
 Si l'accuracy dépasse **60 %** ou si le log-loss descend sous **0.85**, on
 s'arrête et on cherche la fuite temporelle. Ce n'est jamais une bonne nouvelle.
+`src/eval/report.py` vérifie les deux bornes à chaque entraînement et fait
+échouer le script si l'une est franchie.
+
+## Publier et vérifier
+
+`make publish` prédit les matchs à venir depuis le flux de fixtures
+football-data et ajoute les lignes à `predictions/predictions.parquet`. Deux
+propriétés rendent l'exercice honnête, et toutes deux sont mécaniques :
+
+- **Append-only.** Une ligne publiée n'est jamais modifiée ni supprimée. La
+  réconciliation joint les résultats à la volée et n'écrit rien en retour. Un
+  test le vérifie.
+- **Horodaté par ce qu'on ne contrôle pas.** Chaque ligne porte un
+  `published_at` et le sha256 de sa charge, mais surtout le fichier est suivi
+  dans git. Un sceptique n'a pas à croire l'horodatage du fichier :
+  l'historique git dit quand la prédiction existait.
+
+Les features d'un match à venir passent par `build_features` exactement comme
+une ligne d'entraînement — pas de second chemin de code, donc pas d'écart
+entraînement/production. Un test compare les features d'un match sans score à
+celles du même match avec un 9-0 : elles sont identiques.
+
+`make track` mesure la calibration des prédictions publiées une fois leurs
+matchs joués, face au marché.
+
+## Rapports générés
+
+| Fichier | Contenu |
+|---|---|
+| `reports/model_report.md` | résultats du test, garde-fou, calibration par tranche, biais par classe, importance des features |
+| `reports/walk_forward.md` | stabilité saison par saison et saturation de l'historique |
+| `reports/tracking.md` | calibration des prédictions publiées |
 
 ## Documents
 
