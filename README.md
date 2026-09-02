@@ -12,10 +12,10 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | Phase | Sujet | État |
 |---|---|---|
 | 0 | Fondations (log-loss, Brier, ECE, dévigorisation) | exercices en cours dans `JOURNAL.md` |
-| 1 | Squelette, ingestion, mapping des noms | football-data ingéré ; FBref/Understat en attente |
+| 1 | Squelette, ingestion, mapping des noms | fait — 2 sources jointes à 100 %, 35 noms mappés |
 | 1bis | Audit de qualité des données | fait — `notebooks/01_audit_qualite.ipynb` |
 | 2 | Baselines et métriques | fait — voir le tableau ci-dessous |
-| 2bis | Exploration du signal (train uniquement) | à faire |
+| 2bis | Exploration du signal (train uniquement) | fait — `notebooks/02_analyse.ipynb` |
 | 3 | Features (Elo, rolling, non-fuite) | fait — 6 features, 20 tests de non-fuite et d'invariance |
 | 4 | Modèle LightGBM et calibration isotonique | à faire |
 | 5 | Validation walk-forward | à faire |
@@ -26,21 +26,34 @@ dans [`PLAN.md`](PLAN.md).
 
 ## Données
 
-Source unique pour l'instant : **football-data.co.uk**, cotes de clôture et
-statistiques de match.
+Deux sources, jointes dans `data/processed/matches.parquet` (33 colonnes).
 
 - **10 734 matchs**, du 2020-08-21 au 2026-05-24
 - 5 championnats : Premier League, La Liga, Bundesliga, Serie A, Ligue 1
 - 6 saisons : 2020-21 à 2025-26
-- 25 colonnes → `data/raw/football_data.parquet` (gitignoré, régénérable)
+- **football-data.co.uk** → résultats, statistiques de match, cotes de clôture
+- **Understat** → xG, xG hors penalty, PPDA, passes profondes
+
+Taux de jointure : **100.00 %**. La clé est `(saison, domicile, extérieur)` et
+non la date : dans un championnat aller-retour cette triple est exactement
+unique dans les deux sources, alors que les dates divergent d'un ou deux jours
+sur 18 matchs à cause des coups d'envoi tardifs et des reports. Joindre sur la
+date exigerait une fenêtre de tolérance, ce qui est l'équivalent temporel du
+fuzzy matching et donc interdit ici.
+
+Les noms d'équipes sont réconciliés par un dict explicite de **35 entrées** dans
+`src/data/team_mapping.py`, les noms football-data servant de forme canonique.
+Un nom inconnu lève `UnmappedTeamError`. `make audit-teams` liste ce qui manque.
 
 Trois jeux de cotes de **clôture** sont conservés, jamais d'ouverture : moyenne
 de marché (`avg`, 100 % de couverture), Bet365 (`b365`, 100 %) et Pinnacle
 (`ps`, 92 % — mais seulement ~50 % sur la saison de test, donc inutilisable
 seul comme baseline `market`).
 
-Sources en attente d'arbitrage : Understat pour le xG (recommandé), FBref
-(déconseillé, voir `PLAN.md`).
+FBref n'est pas utilisé : `soccerdata` 1.9.1 n'en expose plus que
+schedule / keeper / shooting / misc, les tables de passes, possession et
+défense qui justifiaient la source ont disparu, et son accès exige un pilote de
+navigateur. Tout ce qu'il apporterait encore est déjà couvert par Understat.
 
 ## Commandes
 
@@ -55,7 +68,10 @@ make eval      # phase 5, pas encore implémenté
 uv run python scripts/run_baselines.py            # tableau des 3 baselines
 uv run python scripts/run_baselines.py --book ps  # contrôle croisé Pinnacle
 
-uv run jupyter lab notebooks/01_audit_qualite.ipynb
+make merge         # joint les sources
+make audit-teams   # noms d'équipes non résolus
+
+uv run jupyter lab notebooks/
 ```
 
 ## Structure
@@ -87,7 +103,7 @@ dataset.
 | `home` | Toujours victoire à domicile |
 | `market` | Cotes de clôture dévigorisées (`avg` par défaut) — référence haute, probablement imbattable |
 
-### Les 6 features de départ
+### Les 8 features de départ
 
 Construites par `build_features(matches, cutoff_date)`, qui garantit deux
 invariants vérifiés par `tests/test_no_leakage.py` : aucune ligne ne lit son
@@ -100,17 +116,29 @@ propre match, et rien après `cutoff_date` n'est lu du tout.
 | `goals_scored_diff_5` | buts marqués sur 5 matchs, différentiel |
 | `goals_conceded_diff_5` | buts encaissés sur 5 matchs, différentiel |
 | `shots_target_diff_5` | tirs cadrés sur 5 matchs, différentiel |
-| `rest_days_diff` | jours de repos, différentiel |
+| `np_xg_created_diff_5` | xG hors penalty créé sur 5 matchs, différentiel |
+| `np_xg_conceded_diff_5` | xG hors penalty concédé sur 5 matchs, différentiel |
+| `rest_days_diff` | jours de repos, différentiel, **plafonné à 14 jours** |
+
+Le plafond sur `rest_days` n'est pas cosmétique : le maximum brut était de 811
+jours. Au-delà de deux semaines la feature ne mesure plus la fatigue, elle
+encode « cette équipe était reléguée ou absente ».
 
 Validation indépendante : `elo_diff` corrèle à **0.857** avec la probabilité de
 victoire à domicile du marché. Aucun résultat n'entre dans ce calcul, seulement
 deux estimations d'avant-match — c'est donc une vérification que le pipeline
 produit du signal réel, pas une mesure de performance.
 
-Attention à la redondance : les cinq features de force corrèlent entre elles
-entre 0.48 et 0.74. Elles mesurent largement la même chose. Seule
-`rest_days_diff` est orthogonale (−0.04 partout). Les 6 features valent en
-pratique 2 dimensions indépendantes.
+Attention à la redondance : les sept features de force corrèlent entre elles
+entre 0.25 et 0.78. Elles mesurent largement la même chose. Seule
+`rest_days_diff` est orthogonale (±0.01 partout). **Les 8 features valent en
+pratique 2 dimensions indépendantes : la force et le repos.** Ajouter une
+nouvelle variante de forme ne servira à rien.
+
+Le xG n'apporte pas une dimension nouvelle — il corrèle à 0.78 avec les tirs
+cadrés — mais c'est une **meilleure mesure de la même dimension** :
+`np_xg_created_diff_5` prédit la marge de buts du match suivant à 0.332 contre
+0.283 pour `goals_scored_diff_5`, soit **17 % de pouvoir prédictif en plus**.
 
 ### Décisions de conception
 
@@ -169,3 +197,13 @@ s'arrête et on cherche la fuite temporelle. Ce n'est jamais une bonne nouvelle.
 | [`PLAN.md`](PLAN.md) | Plan phase par phase, avec le protocole d'apprentissage |
 | [`PROMPTS.md`](PROMPTS.md) | Prompts de démarrage et de maintenance |
 | `JOURNAL.md` | Prédictions écrites avant les résultats, et confrontation |
+
+## Notebooks
+
+Exécutés et suivis dans git, sorties et figures comprises. Les figures sont
+aussi exportées dans `reports/figures/`.
+
+| Notebook | Contenu |
+|---|---|
+| `01_audit_qualite.ipynb` | Qualité des données, tout le dataset : nulls, couverture des cotes, intégrité du calendrier, avantage domicile dans le temps, marges des bookmakers, anomalies |
+| `02_analyse.ipynb` | Le terrain de jeu, le piège de l'accuracy, la fiabilité du marché, les corrélations entre features, le pouvoir prédictif de chacune, les trajectoires Elo, buts contre xG |
