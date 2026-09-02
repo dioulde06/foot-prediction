@@ -44,7 +44,7 @@ disallow_any_explicit = false
 files = ["src", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
-module = ["soccerdata.*", "lightgbm.*", "matplotlib.*"]
+module = ["soccerdata.*", "lightgbm.*", "matplotlib.*", "sklearn.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
