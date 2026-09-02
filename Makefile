@@ -1,4 +1,4 @@
-.PHONY: install lint test fetch merge audit-teams baselines train eval
+.PHONY: install lint test fetch merge audit-teams baselines train eval publish track
 
 install:
 	uv sync
@@ -28,7 +28,15 @@ baselines:
 	uv run python -m scripts.run_baselines $(if $(BOOK),--book $(BOOK),)
 
 train:
-	@echo "not implemented yet -- phase 4 (prompt 4.1)"; exit 1
+	uv run python -m scripts.train_and_report
 
 eval:
-	@echo "not implemented yet -- phase 5 (prompt 5.1)"; exit 1
+	uv run python -m scripts.run_walk_forward
+
+# Predict the upcoming fixtures and append them to predictions/.
+publish:
+	uv run python -m scripts.publish
+
+# Calibration of the published predictions, once their matches are played.
+track:
+	uv run python -m scripts.track_calibration

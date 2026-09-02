@@ -74,6 +74,11 @@ class EloRatings:
 
         season: str | None = None
         for row in matches.iter_rows(named=True):
+            # Unplayed fixtures ride along in the same frame so that features
+            # for upcoming matches go through exactly the same code path as
+            # training ones. They carry no result, so they update nothing.
+            if row["home_goals"] is None or row["away_goals"] is None:
+                continue
             if season is not None and row["season"] != season:
                 # Effective the day before the new season opens, so that a
                 # rating read on the first matchday already includes it.

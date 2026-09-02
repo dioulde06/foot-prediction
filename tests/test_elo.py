@@ -131,3 +131,29 @@ def test_fit_refuses_matches_that_are_not_chronological() -> None:
     frame = _matches(BASE_ROWS).sort("date", descending=True)
     with pytest.raises(ValueError, match="chronological"):
         EloRatings().fit(frame)
+
+
+def test_unplayed_fixtures_do_not_move_the_ratings() -> None:
+    """A fixture with no score rides in the same frame and updates nothing."""
+    played = _matches(BASE_ROWS)
+    with_fixture = pl.concat(
+        [
+            played,
+            pl.DataFrame(
+                {
+                    "date": [dt.date(2020, 9, 30)],
+                    "season": ["2020-21"],
+                    "home_team": ["A"],
+                    "away_team": ["B"],
+                    "home_goals": [None],
+                    "away_goals": [None],
+                },
+                schema=played.schema,
+            ),
+        ]
+    )
+    after = dt.date(2020, 10, 31)
+    played_only = EloRatings().fit(played)
+    both = EloRatings().fit(with_fixture)
+    for team in ("A", "B"):
+        assert played_only.get_rating(team, after) == both.get_rating(team, after)
