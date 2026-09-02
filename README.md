@@ -16,7 +16,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 1bis | Audit de qualité des données | fait — `notebooks/01_audit_qualite.ipynb` |
 | 2 | Baselines et métriques | fait — voir le tableau ci-dessous |
 | 2bis | Exploration du signal (train uniquement) | à faire |
-| 3 | Features (Elo, rolling, non-fuite) | à faire |
+| 3 | Features (Elo, rolling, non-fuite) | fait — 6 features, 20 tests de non-fuite et d'invariance |
 | 4 | Modèle LightGBM et calibration isotonique | à faire |
 | 5 | Validation walk-forward | à faire |
 | 6 | App de publication et suivi | à faire |
@@ -63,7 +63,7 @@ uv run jupyter lab notebooks/01_audit_qualite.ipynb
 ```
 src/
   data/       ingestion (fetch.py), normalisation des noms d'équipes
-  features/   build_features(), Elo, rolling windows
+  features/   build.py (build_features), elo.py
   models/     entraînement, calibration
   eval/       metrics.py, baselines.py, splits.py, walk-forward
 scripts/      run_baselines.py
@@ -87,6 +87,33 @@ dataset.
 | `home` | Toujours victoire à domicile |
 | `market` | Cotes de clôture dévigorisées (`avg` par défaut) — référence haute, probablement imbattable |
 
+### Les 6 features de départ
+
+Construites par `build_features(matches, cutoff_date)`, qui garantit deux
+invariants vérifiés par `tests/test_no_leakage.py` : aucune ligne ne lit son
+propre match, et rien après `cutoff_date` n'est lu du tout.
+
+| Feature | Contenu |
+|---|---|
+| `elo_diff` | Elo domicile + avantage terrain − Elo extérieur |
+| `form_points_diff_5` | points par match sur 5 matchs, différentiel |
+| `goals_scored_diff_5` | buts marqués sur 5 matchs, différentiel |
+| `goals_conceded_diff_5` | buts encaissés sur 5 matchs, différentiel |
+| `shots_target_diff_5` | tirs cadrés sur 5 matchs, différentiel |
+| `rest_days_diff` | jours de repos, différentiel |
+
+Validation indépendante : `elo_diff` corrèle à **0.857** avec la probabilité de
+victoire à domicile du marché. Aucun résultat n'entre dans ce calcul, seulement
+deux estimations d'avant-match — c'est donc une vérification que le pipeline
+produit du signal réel, pas une mesure de performance.
+
+Attention à la redondance : les cinq features de force corrèlent entre elles
+entre 0.48 et 0.74. Elles mesurent largement la même chose. Seule
+`rest_days_diff` est orthogonale (−0.04 partout). Les 6 features valent en
+pratique 2 dimensions indépendantes.
+
+### Décisions de conception
+
 `uniform` est ajustée sur le **train uniquement**. Calculée sur tout le dataset,
 la baseline connaîtrait la saison de test et deviendrait artificiellement forte.
 
@@ -107,6 +134,13 @@ bookmakers en chargent davantage sur les outsiders. Plafond connu et documenté.
 | `market` | **0.9778** | 0.5823 | 0.0118 | 53.5 % |
 
 \* information seulement, ne décide de rien.
+
+`market` utilise la dévigorisation par **puissance** (`p_i = π_i^k`, `k` résolu
+pour que la somme fasse 1). La méthode multiplicative surestimait les outsiders
+de 2.25 points et sous-estimait les favoris de 5.15 points, la distorsion étant
+proportionnelle à la marge du bookmaker. La puissance ramène ces écarts à +0.34
+et −0.60 et l'ECE de 0.0118 à 0.0086. Le log-loss, lui, ne bouge que de 0.0009 :
+la mauvaise calibration était concentrée sur les tranches extrêmes, peu peuplées.
 
 Ne rien savoir vaut `ln(3) = 1.0986`. **Le terrain de jeu fait 0.094 de large** :
 tout modèle utile atterrira entre 1.0721 et 0.9778. L'entropie moyenne des
