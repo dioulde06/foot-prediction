@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Calibrated 1X2 probability model for the big five European leagues"
 requires-python = "==3.11.*"
 dependencies = [
+    "numpy>=1.26",
     "polars>=1.0",
     "pyarrow>=17",
     "lightgbm>=4.5",
@@ -32,14 +33,15 @@ target-version = "py311"
 select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RET", "PTH"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["ANN", "E501"]  # CSV fixtures are long by nature
+"tests/*" = ["ANN", "E501"]      # CSV fixtures are long by nature
+"notebooks/*" = ["E501"]         # chained polars expressions in cells
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
 warn_unreachable = true
 disallow_any_explicit = false
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 module = ["soccerdata.*", "lightgbm.*", "matplotlib.*"]

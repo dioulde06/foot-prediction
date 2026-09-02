@@ -92,7 +92,14 @@ ODDS_COLUMNS = (
     "odds_close_avg_a",
 )
 # Nulls here mean the row is unusable, so they must abort the ingestion.
-REQUIRED_COLUMNS = ("date", "home_team", "away_team", "home_goals", "away_goals", "result")
+REQUIRED_COLUMNS = (
+    "date",
+    "home_team",
+    "away_team",
+    "home_goals",
+    "away_goals",
+    "result",
+)
 
 
 def season_code(first_year: int) -> str:
@@ -136,7 +143,12 @@ def _parse_csv(raw: bytes, league_code: str, first_year: int) -> pl.DataFrame:
     frame = frame.filter(pl.col("Div").str.strip_chars() == league_code)
     dropped = total_rows - frame.height
     if dropped:
-        LOG.info("%s %s: dropped %d non-match rows", league_code, season_label(first_year), dropped)
+        LOG.info(
+            "%s %s: dropped %d non-match rows",
+            league_code,
+            season_label(first_year),
+            dropped,
+        )
 
     frame = frame.select(list(COLUMNS)).rename(COLUMNS)
     frame = frame.with_columns([_as_nullable_str(c) for c in frame.columns])
@@ -192,7 +204,10 @@ def fetch_football_data(*, force: bool = False) -> pl.DataFrame:
             url = f"{BASE_URL}/{season_code(first_year)}/{league_code}.csv"
             frame = _parse_csv(_download(url), league_code, first_year)
             LOG.info(
-                "%-3s %s: %3d matches", league_code, season_label(first_year), frame.height
+                "%-3s %s: %3d matches",
+                league_code,
+                season_label(first_year),
+                frame.height,
             )
             frames.append(frame)
             time.sleep(REQUEST_DELAY_S)
@@ -203,7 +218,9 @@ def fetch_football_data(*, force: bool = False) -> pl.DataFrame:
     for column in ODDS_COLUMNS:
         coverage = 1 - matches[column].null_count() / matches.height
         LOG.info("%s coverage: %.1f%%", column, 100 * coverage)
-    LOG.info("total: %d matches, %d teams", matches.height, matches["home_team"].n_unique())
+    LOG.info(
+        "total: %d matches, %d teams", matches.height, matches["home_team"].n_unique()
+    )
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
     matches.write_parquet(FOOTBALL_DATA_PARQUET)
