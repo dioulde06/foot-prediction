@@ -34,7 +34,7 @@ select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RET", "PTH"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN", "E501"]      # CSV fixtures are long by nature
-"notebooks/*" = ["E501"]         # chained polars expressions in cells
+"notebooks/*" = ["E501", "E402"]  # long polars chains; sys.path before imports
 
 [tool.mypy]
 python_version = "3.11"
