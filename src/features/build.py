@@ -16,6 +16,7 @@ test at the same time.
 from __future__ import annotations
 
 import datetime as dt
+import warnings
 
 import polars as pl
 
@@ -108,27 +109,51 @@ def _team_match_table(matches: pl.DataFrame) -> pl.DataFrame:
 
 
 def _rolling_history(matches: pl.DataFrame, window: int) -> pl.DataFrame:
-    """Rolling means of the previous `window` matches, per team.
+    """Rolling means of the previous `window` *played* matches, per team.
 
-    The shift(1) is the whole safety mechanism: without it the average would
-    include the match being predicted. min_samples equals the window on
-    purpose, so a two-match average is never passed off as a five-match one;
-    the resulting nulls are handled natively by LightGBM.
+    Two rules make this leak-free and fixture-proof at once. Windows are
+    computed on played matches only, so an unplayed fixture in the frame never
+    empties the window of the rows after it: a prediction a month ahead reads
+    the last five results known today. And every row, played or not, takes the
+    window as it stood *strictly before its date*, so a match never reads its
+    own result. min_samples equals the window on purpose: a two-match average
+    is never passed off as a five-match one; LightGBM handles the nulls.
     """
     long = _team_match_table(matches)
-    return long.select(
-        "date",
+    played = long.filter(pl.col("goals_for").is_not_null())
+    after_match = played.select(
         "team",
+        pl.col("date").alias("played_date"),
         *[
             pl.col(source)
-            .shift(1)
             .rolling_mean(window_size=window, min_samples=window)
             .over("team")
             .alias(f"{name}_{window}")
             for name, source in _ROLLED
         ],
-        (pl.col("date") - pl.col("date").shift(1))
-        .over("team")
+    ).sort("played_date")
+    # A team plays at most once a day, so "the day before" is "strictly before".
+    rows = (
+        long.select("date", "team")
+        .with_columns((pl.col("date") - pl.duration(days=1)).alias("as_of"))
+        .sort("as_of")
+    )
+    with warnings.catch_warnings():
+        # polars cannot verify sortedness within `by` groups; both frames are
+        # sorted on their asof key just above.
+        warnings.filterwarnings("ignore", message="Sortedness of columns")
+        joined = rows.join_asof(
+            after_match,
+            left_on="as_of",
+            right_on="played_date",
+            by="team",
+            strategy="backward",
+        )
+    return joined.select(
+        "date",
+        "team",
+        *[f"{name}_{window}" for name, _ in _ROLLED],
+        (pl.col("date") - pl.col("played_date"))
         .dt.total_days()
         .cast(pl.Float64)
         .clip(upper_bound=MAX_REST_DAYS)

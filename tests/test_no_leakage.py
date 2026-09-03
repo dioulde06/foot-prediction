@@ -176,3 +176,61 @@ def test_rest_days_are_capped_so_a_long_absence_is_not_a_feature() -> None:
     features = build_features(pl.DataFrame(rows).sort("date"), LAST_DAY)
     late = features.filter(pl.col("date") == rows[-1]["date"])
     assert late["rest_days_home"][0] == MAX_REST_DAYS
+
+
+# ---------------- fixtures interleaved with unplayed ones ----------------
+
+
+def _unplayed(day: int, home: str, away: str) -> dict[str, Any]:
+    row = _fixture(day, home, away, 0, 0)
+    for key in (
+        "home_goals",
+        "away_goals",
+        "home_shots_target",
+        "away_shots_target",
+        "home_np_xg",
+        "away_np_xg",
+        "result",
+    ):
+        row[key] = None
+    return row
+
+
+def test_a_fixture_behind_another_unplayed_fixture_still_gets_full_windows() -> None:
+    """Predicting a month ahead: the second fixture must read the last five
+    *played* matches, not a window polluted by the unplayed one before it."""
+    played = _synthetic(4).to_dicts()
+    later = [_unplayed(100, "A", "B"), _unplayed(101, "A", "C")]
+    frame = pl.DataFrame(played + later, schema_overrides={"result": pl.String}).sort(
+        "date"
+    )
+    features = build_features(frame, LAST_DAY)
+    first = features.filter(pl.col("date") == later[0]["date"]).row(0, named=True)
+    second = features.filter(pl.col("date") == later[1]["date"]).row(0, named=True)
+    for name in ("goals_scored_5_home", "np_xg_created_5_home", "form_points_5_home"):
+        assert second[name] is not None
+        assert second[name] == pytest.approx(first[name])
+    # Rest days count from the last *played* match, so the second fixture is
+    # one more week away from it than the first.
+    assert second["rest_days_home"] == first["rest_days_home"] == MAX_REST_DAYS
+
+
+def test_played_rows_are_unchanged_by_interleaved_unplayed_fixtures() -> None:
+    played = _synthetic(6)
+    # A midweek fixture between two matchdays: a real calendar never has a team
+    # playing twice on the same date, and neither does this one.
+    midweek = _unplayed(3, "A", "B")
+    midweek["date"] = midweek["date"] + dt.timedelta(days=3)
+    with_fixtures = pl.DataFrame(
+        played.to_dicts() + [midweek], schema_overrides={"result": pl.String}
+    ).sort("date")
+    alone = build_features(played, LAST_DAY)
+    mixed = build_features(with_fixtures, LAST_DAY)
+    key = ["date", "home_team", "away_team"]
+    # The inner join drops the unplayed row, which has no counterpart in `alone`.
+    joined = alone.join(mixed, on=key, how="inner", suffix="_mixed")
+    assert joined.height == alone.height
+    for name in FEATURE_COLUMNS:
+        left, right = joined[name].to_list(), joined[f"{name}_mixed"].to_list()
+        for a, b in zip(left, right, strict=True):
+            assert (a is None and b is None) or a == pytest.approx(b)
