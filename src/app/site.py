@@ -251,7 +251,6 @@ def build_data(
     return {
         "meta": {
             "publishedAt": latest["published_at"].strftime("%Y-%m-%d %H:%M UTC"),
-            "generatedAt": today.isoformat(),
             "modelHash": latest["model_hash"],
             "temperature": round(latest["temperature"], 4),
             "nPublished": predictions.height,

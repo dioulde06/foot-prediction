@@ -104,7 +104,7 @@ site/         index.html généré par `make site`, servi tel quel
 reports/
   figures/    figures exportées en PNG
 data/
-  raw/        parquet brut par source, dont understat_players.parquet
+  raw/        parquet brut par source ; understat_players.parquet est refait à chaque publication, non suivi
   processed/  dataset joint
 models/       modèle entraîné et métadonnées
 .github/workflows/publish.yml   le robot de publication

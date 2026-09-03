@@ -7,3 +7,5 @@ __pycache__/
 .ipynb_checkpoints/
 /downloaded_files/
 .DS_Store
+# Refetched in full at every publication; tracking it would commit noise daily.
+/data/raw/understat_players.parquet
