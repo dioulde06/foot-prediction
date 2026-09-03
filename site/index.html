@@ -392,8 +392,21 @@
   .tchart svg { width: 100%; height: auto; display: block; }
   .tchart path.draw { stroke-dasharray: 2000; stroke-dashoffset: 2000; animation: draw 1.2s ease-out forwards; }
   @keyframes draw { to { stroke-dashoffset: 0; } }
-  .tweeks { padding: 8px 16px 14px; display: flex; flex-direction: column; gap: 8px; }
-  .tweek { border-top: 1px solid var(--line-soft); padding-top: 8px; }
+  .tfilters { display: flex; flex-direction: column; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line-soft); background: var(--panel-2); }
+  .tfilters .label { margin-left: auto; }
+  .tweeks { padding: 4px 0 8px; display: flex; flex-direction: column; }
+  .tweek { border-top: 1px solid var(--line-soft); }
+  .tweek:first-child { border-top: 0; }
+  .wrow { appearance: none; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 16px; background: transparent; border: 0; text-align: left; color: var(--ink); font-size: 13px; font-weight: 600; transition: background 120ms ease; }
+  .wrow:hover { background: var(--panel-2); }
+  .wrow .wl { display: inline-flex; align-items: center; gap: 10px; }
+  .wrow .wr { display: inline-flex; align-items: center; gap: 10px; font-weight: 500; }
+  .wrow .chev { font-style: normal; display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--line); border-radius: 50%; color: var(--ink-2); font-size: 13px; background: var(--panel); }
+  .dots { display: inline-flex; gap: 3px; }
+  .dots i { width: 10px; height: 10px; border-radius: 2px; background: var(--line); }
+  .dots i.won { background: var(--good); } .dots i.lost { background: var(--stamp); opacity: .8; } .dots i.open { background: var(--ink-3); opacity: .4; }
+  .tweek .tbets { padding: 0 16px 12px; }
+  .tweek.open .wrow { background: var(--panel-2); }
   .tw1 { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
   .tbets { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; }
   .tbet { border: 1px solid var(--line-soft); border-radius: var(--r-sm); padding: 8px 10px; font-size: 12px; display: grid; gap: 5px; }
@@ -595,6 +608,7 @@
             <div class="fleg"><span><i class="md"></i>Réalisé</span><span><i class="od"></i>Attendu, si le marché a raison</span></div>
           </div>
         </div>
+        <div class="tfilters" id="track-filters"></div>
         <div class="tweeks" id="track-weeks"></div>
       </div>
       <div class="card carnet">
@@ -1352,7 +1366,10 @@ function renderBook() {
 }
 
 /* ---------------- track record ---------------- */
-let trackObj = "target", trackOpen = 6, trackStake = 10;
+let trackObj = "target", trackStake = 10;
+let trackRes = "all", trackMonth = "all", trackTeam = "", trackView = "summary";
+const trackOpenWeeks = new Set();
+const MONTHS_LONG = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
 let trackSrc = (DATA.track && DATA.track.live && DATA.track.live.objectives.target.weeks.length) ? "live" : "backtest";
 const TRACK_LESSON = {
   target: (o) => `Réussite ${p1(o.hitRate)} % pour ${p1(o.meanProb)} % annoncés : les probabilités disent vrai. Le résultat suit la marge du bookmaker, ni plus ni moins.`,
@@ -1428,20 +1445,54 @@ function renderTrack() {
     <text x="${x(n - 1) - 6}" y="${y(cum[n - 1].net) - 8}" text-anchor="end" font-size="11" font-weight="700" fill="var(--ink)" font-family="Sometype Mono, monospace">${cum[n - 1].net >= 0 ? "+" : ""}${Math.round(cum[n - 1].net)} €</text>
     ${[0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${frDate(cum[i].week)}</text>`).join("")}`;
   document.getElementById("track-chart-sub").textContent = `${money(trackStake)} € par pari · en euros`;
-  const weeks = [...o.weeks].reverse();
-  const shown = weeks.slice(0, trackOpen);
-  document.getElementById("track-weeks").innerHTML = shown.map((w) => {
-    const settled = w.bets.filter((b) => b.won !== null);
-    const net = settled.reduce((a, b) => a + (b.won ? trackStake * b.odds : 0) - trackStake, 0);
-    const head = settled.length ? `${settled.filter((b) => b.won).length} / ${settled.length} · ${net >= 0 ? "+" : ""}${money(net)} €` : "en cours";
-    return `<div class="tweek">
-      <div class="tw1"><span>Semaine du ${frDate(w.week)}</span><span class="n ${!settled.length ? "" : net >= 0 ? "good" : "bad"}">${head}</span></div>
-      <div class="tbets">${w.bets.map((b) => { const st = b.won === null ? "open" : b.won ? "won" : "lost"; return `<div class="tbet ${st}">
+  renderTrackWeeks(o, T);
+}
+const betStatus = (b) => b.won === null ? "open" : b.won ? "won" : "lost";
+function renderTrackWeeks(o, T) {
+  const all = [...o.weeks].reverse();
+  const months = [...new Set(all.map((w) => w.week.slice(0, 7)))];
+  const q = trackTeam.trim().toLowerCase();
+  const keep = (b) => (trackRes === "all" || betStatus(b) === trackRes) && (!q || b.legs.some((l) => l.home.toLowerCase().includes(q) || l.away.toLowerCase().includes(q)));
+  const weeks = all
+    .filter((w) => trackMonth === "all" || w.week.startsWith(trackMonth))
+    .map((w) => ({ ...w, shown: w.bets.filter(keep) }))
+    .filter((w) => w.shown.length);
+  const nBets = weeks.reduce((a, w) => a + w.shown.length, 0);
+  document.getElementById("track-filters").innerHTML = `
+    <div class="frow">
+      <div class="seg small" id="track-res">
+        ${[["all", "Tous"], ["won", "Gagnés"], ["lost", "Perdus"], ["open", "En cours"]].map(([k, l]) => `<button type="button" data-tres="${k}" aria-pressed="${trackRes === k}">${l}</button>`).join("")}
+      </div>
+      <div class="seg small" id="track-view">
+        <button type="button" data-tview="summary" aria-pressed="${trackView === "summary"}">Résumé</button>
+        <button type="button" data-tview="detail" aria-pressed="${trackView === "detail"}">Détail</button>
+      </div>
+      <label class="search"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.5 10.5 14 14" stroke="currentColor" stroke-width="1.6"/></svg><input type="search" id="track-team" value="${esc(trackTeam)}" placeholder="Équipe…" aria-label="Filtrer les paris par équipe"></label>
+      <span class="label">${nBets} pari${nBets > 1 ? "s" : ""} · ${weeks.length} semaine${weeks.length > 1 ? "s" : ""}</span>
+    </div>
+    <div class="frow chips">
+      <button type="button" class="chip" data-tmonth="all" aria-pressed="${trackMonth === "all"}">Toute la période</button>
+      ${months.map((m) => `<button type="button" class="chip" data-tmonth="${m}" aria-pressed="${trackMonth === m}">${MONTHS_LONG[Number(m.slice(5, 7)) - 1]} <em>${all.filter((w) => w.week.startsWith(m)).length}</em></button>`).join("")}
+    </div>`;
+  if (!weeks.length) { document.getElementById("track-weeks").innerHTML = `<div class="empty"><b>Aucun pari avec ces filtres.</b></div>`; return; }
+  const card = (b) => { const st = betStatus(b); return `<div class="tbet ${st}">
         <div class="tb1"><span class="status ${st}">${st === "open" ? "en cours" : b.won ? "gagné" : "perdu"}</span><span class="n">cote ${b.odds.toFixed(2)} · ${p1(b.pq)} %</span><span class="n gain">${st === "open" ? `${money(trackStake)} € misés` : b.won ? `+${money(trackStake * b.odds - trackStake)} €` : `−${money(trackStake)} €`}</span></div>
         <div class="tb2">${b.legs.map((l) => `<span class="${l.hit === null ? "" : l.hit ? "hit" : "miss"}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.hit === null ? "" : l.hit ? " ✓" : " ✗"}</span>`).join("")}</div>
-      </div>`; }).join("")}
+      </div>`; };
+  document.getElementById("track-weeks").innerHTML = weeks.map((w) => {
+    const settled = w.shown.filter((b) => b.won !== null);
+    const net = settled.reduce((a, b) => a + (b.won ? trackStake * b.odds : 0) - trackStake, 0);
+    const head = settled.length ? `${settled.filter((b) => b.won).length} / ${settled.length} · ${net >= 0 ? "+" : ""}${money(net)} €` : "en cours";
+    const dots = `<span class="dots" aria-hidden="true">${w.shown.map((b) => `<i class="${betStatus(b)}" title="cote ${b.odds.toFixed(2)}"></i>`).join("")}</span>`;
+    const isOpen = trackView === "detail" || trackOpenWeeks.has(w.week);
+    return `<div class="tweek ${isOpen ? "open" : ""}">
+      <button type="button" class="wrow" data-tw="${w.week}" aria-expanded="${isOpen}">
+        <span class="wl">Semaine du ${frDate(w.week)}${dots}</span>
+        <span class="wr"><span class="n ${!settled.length ? "" : net >= 0 ? "good" : "bad"}">${head}</span><i class="chev">${isOpen ? "–" : "+"}</i></span>
+      </button>
+      ${isOpen ? `<div class="tbets">${w.shown.map(card).join("")}</div>` : ""}
     </div>`;
-  }).join("") + (weeks.length > trackOpen ? `<button type="button" class="btn ghost" data-more-weeks>Voir ${Math.min(8, weeks.length - trackOpen)} semaines de plus</button>` : "");
+  }).join("");
 }
 
 /* ---------------- events ---------------- */
@@ -1519,10 +1570,17 @@ document.addEventListener("click", (e) => {
   }
   if (t.closest("[data-bet]")) { recordBet(); toast("Ajouté au carnet, onglet Bilan"); return; }
   const tsrc = t.closest("[data-tsrc]");
-  if (tsrc) { trackSrc = tsrc.dataset.tsrc; trackOpen = 6; renderTrack(); return; }
+  if (tsrc) { trackSrc = tsrc.dataset.tsrc; trackOpenWeeks.clear(); renderTrack(); return; }
   const tob = t.closest("[data-tobj]");
-  if (tob) { trackObj = tob.dataset.tobj; trackOpen = 6; setSeg("data-tobj", trackObj); renderTrack(); return; }
-  if (t.closest("[data-more-weeks]")) { trackOpen += 8; renderTrack(); return; }
+  if (tob) { trackObj = tob.dataset.tobj; trackOpenWeeks.clear(); setSeg("data-tobj", trackObj); renderTrack(); return; }
+  const tres = t.closest("[data-tres]");
+  if (tres) { trackRes = tres.dataset.tres; renderTrack(); return; }
+  const tview = t.closest("[data-tview]");
+  if (tview) { trackView = tview.dataset.tview; renderTrack(); return; }
+  const tmonth = t.closest("[data-tmonth]");
+  if (tmonth) { trackMonth = tmonth.dataset.tmonth; trackOpenWeeks.clear(); renderTrack(); return; }
+  const tw = t.closest("[data-tw]");
+  if (tw && trackView === "summary") { const k = tw.dataset.tw; trackOpenWeeks.has(k) ? trackOpenWeeks.delete(k) : trackOpenWeeks.add(k); renderTrack(); refocus(`[data-tw="${k}"]`); return; }
   const ts = t.closest("[data-ts]");
   if (ts) { setTrackStake(ts.dataset.ts); renderTrack(); return; }
   const del = t.closest("[data-del]");
@@ -1541,6 +1599,7 @@ for (const id of ["stake", "stake-m"]) {
   el.addEventListener("blur", () => { setStake(el.value); renderTicket(); renderProps(); });
 }
 document.getElementById("budget").addEventListener("input", (e) => { budget = Math.max(0, Number(e.target.value) || 0); try { localStorage.setItem("barometre.budget", String(budget)); } catch (err) { /* ignore */ } renderBudget(); });
+document.addEventListener("input", (e) => { if (e.target && e.target.id === "track-team") { trackTeam = e.target.value; const pos = e.target.selectionStart; renderTrack(); const el = document.getElementById("track-team"); if (el) { el.focus(); el.setSelectionRange(pos, pos); } } });
 document.getElementById("track-stake").addEventListener("input", (e) => { if (e.target.value !== "") { setTrackStake(e.target.value); renderTrack(); } });
 document.getElementById("track-stake").addEventListener("blur", () => { setTrackStake(document.getElementById("track-stake").value); renderTrack(); });
 window.addEventListener("hashchange", () => { const raw = (location.hash || "").replace(/^#/, ""); const v = Object.fromEntries(raw.split(";").map((kv) => kv.split("="))).v; if (v && VIEWS.includes(v) && v !== currentView) setView(v, false); });
