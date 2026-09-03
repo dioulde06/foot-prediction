@@ -122,12 +122,15 @@ def test_scorers_file_is_append_only(
         }
     )
     first = sc.append_scorers(rows, dt.datetime(2026, 9, 1, 9, 0))
-    again = sc.append_scorers(
-        rows.with_columns(pl.lit(0.99).alias("p_scores")), dt.datetime(2026, 9, 2, 9, 0)
+    same_run = sc.append_scorers(
+        rows.with_columns(pl.lit(0.99).alias("p_scores")), dt.datetime(2026, 9, 1, 9, 0)
     )
-    assert first.height == again.height == 1
-    assert again["p_scores"][0] == 0.39
-    assert list(again.columns) == list(sc.SCORERS_SCHEMA)
+    assert first.height == same_run.height == 1
+    assert same_run["p_scores"][0] == 0.39, "a freeze is never rewritten"
+    # A later publication of the same match adds a second dated freeze.
+    later = sc.append_scorers(rows, dt.datetime(2026, 9, 2, 9, 0))
+    assert later.height == 2
+    assert list(later.columns) == list(sc.SCORERS_SCHEMA)
 
 
 def test_a_fixture_team_without_player_data_is_an_error_not_a_blank() -> None:
@@ -162,3 +165,37 @@ def test_a_side_without_a_full_window_gets_no_estimate() -> None:
         "np_xg_conceded_5_away": 1.0,
     }
     assert sc.expected_goals(row, PRIOR) is None
+
+
+def test_a_player_without_a_minute_this_season_is_not_listed_for_his_old_club() -> None:
+    """Salah left Liverpool, Lewandowski left Barcelona: no 2026-27 row anywhere
+    in the five leagues, so they must not be listed for last season's club."""
+    players = pl.concat(
+        [
+            _players(),
+            pl.DataFrame(
+                {
+                    "league": ["Ligue 1"],
+                    "season": ["2025-26"],
+                    "team": ["Lille"],
+                    "player": ["Departed"],
+                    "player_id": [9],
+                    "position": ["F S"],
+                    "matches": [34],
+                    "minutes": [3000],
+                    "np_goals": [20],
+                    "np_xg": [18.0],
+                    "shots": [100],
+                }
+            ),
+        ]
+    )
+    rates = sc.player_rates(players, PRIOR, min_minutes=900)
+    assert "Departed" not in rates["player"].to_list()
+    assert "Striker" in rates["player"].to_list()
+
+
+def test_before_the_first_matchday_last_season_still_counts() -> None:
+    only_last = _players().filter(pl.col("season") == "2025-26")
+    rates = sc.player_rates(only_last, PRIOR, min_minutes=900)
+    assert rates["player"].to_list() == ["Striker"]

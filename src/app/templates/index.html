@@ -283,6 +283,137 @@
   .nopick .label { grid-column: 1 / -1; font-size: 9.5px; }
   .nopick b { font-size: 15px; font-weight: 500; color: var(--ink-3); background: var(--panel-2); padding: 6px 0; border: 1px dashed var(--line); }
   .cert-diag svg text, .funnel svg text { fill: var(--ink); }
+  /* ---- month view ---- */
+  .filters { position: sticky; top: 0; z-index: 3; display: flex; flex-direction: column; gap: 8px; padding: 10px 14px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .frow { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
+  .strip { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+  .strip .chip { flex: none; }
+  .chips { gap: 6px; }
+  .chip { appearance: none; background: var(--panel-2); border: 1px solid var(--line); padding: 5px 9px; font-size: 12px; font-weight: 500; color: var(--ink-2); display: inline-flex; gap: 6px; align-items: baseline; white-space: nowrap; }
+  .chip em { font-style: normal; font-family: "Sometype Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--ink-3); }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  .chip[aria-pressed="true"] em { color: var(--panel); opacity: .75; }
+  .search { font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); width: 150px; }
+  .tog { appearance: none; background: var(--panel-2); border: 1px solid var(--line); padding: 6px 10px; font-size: 12.5px; font-weight: 500; color: var(--ink-2); display: inline-flex; gap: 6px; align-items: baseline; }
+  .tog em { font-style: normal; font-size: 11px; color: var(--ink-3); }
+  .tog[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  .tog[aria-pressed="true"] em { color: var(--panel); opacity: .75; }
+  .ghead { appearance: none; width: 100%; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 9px 16px; background: var(--panel-2); border: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line-soft); text-align: left; font-family: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif; font-size: 20px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; color: var(--ink); }
+  .ghead:hover { background: var(--line-soft); }
+  .ghead .n { font-size: 11px; font-weight: 500; color: var(--ink-3); text-transform: none; letter-spacing: .06em; font-family: "Sometype Mono", ui-monospace, monospace; display: inline-flex; gap: 10px; align-items: center; }
+  .ghead .n i { font-style: normal; display: inline-grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--line); color: var(--ink-2); font-size: 14px; }
+  .row.compact .rmain { grid-template-columns: 74px minmax(0, 1fr) 232px 32px; padding: 6px 16px; }
+  .row.compact .teams { font-size: 21px; }
+  .row.compact .teams i { padding: 0 4px; }
+  .row.compact .pick { padding: 5px 6px; }
+  .row.compact .pick b { font-size: 16px; }
+  .row.compact .when b { font-size: 13px; }
+  .row.compact .when { font-size: 11px; }
+  @media (max-width: 720px) { .row.compact .rmain { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+  .pick.fair { border-style: dashed; background: transparent; }
+  .pick.fair b { color: var(--ink-2); }
+  .pick.fair[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-style: solid; }
+  .pick.fair[aria-pressed="true"] b { color: var(--panel); }
+  .prop-kv .bad { color: var(--stamp); }
+  .hint { display: inline-grid; place-items: center; width: 15px; height: 15px; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; color: var(--ink-3); cursor: help; vertical-align: middle; margin-left: 4px; }
+  .fold { background: var(--panel); border: 1px solid var(--line); margin-top: 10px; }
+  .fold summary { list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 18px; cursor: pointer; }
+  .fold summary::-webkit-details-marker { display: none; }
+  .fold summary h2 { font-size: 24px; }
+  .fold[open] summary { border-bottom: 1px solid var(--line); }
+  .foldbody { padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+  .how { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px 24px; }
+  .how div { display: grid; gap: 3px; font-size: 13px; color: var(--ink-2); line-height: 1.45; }
+  .how b { color: var(--ink); font-weight: 600; }
+  .sechead h2 { font-size: 30px; }
+  .cert-main { gap: 12px; }
+  h1 { font-size: clamp(46px, 6vw, 72px); }
+  /* ---- stake ---- */
+  .stakebox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 20px; border-bottom: 2px dashed var(--paper-line); }
+  .stakebox label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--paper-ink-2); font-weight: 700; }
+  .stakein { display: inline-flex; align-items: baseline; gap: 6px; border-bottom: 2px solid var(--paper-ink); }
+  .stakein input { appearance: textfield; -moz-appearance: textfield; width: 96px; border: 0; background: transparent; font: inherit; font-size: 22px; font-weight: 700; color: var(--paper-ink); text-align: right; padding: 2px 0; outline-offset: 4px; }
+  .stakein input::-webkit-outer-spin-button, .stakein input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .stakein b { font-size: 16px; color: var(--paper-ink-2); }
+  .quick { display: flex; gap: 4px; margin-left: auto; }
+  .quick button { appearance: none; background: transparent; border: 1px solid var(--paper-line); color: var(--paper-ink-2); font: inherit; font-size: 11.5px; padding: 4px 8px; }
+  .quick button[aria-pressed="true"] { background: var(--paper-ink); color: var(--paper); border-color: var(--paper-ink); }
+
+  /* ---- bookmaker, hand-off, bet log ---- */
+  .bookbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 20px; border-bottom: 2px dashed var(--paper-line); }
+  .bookbox label { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--paper-ink-2); font-weight: 700; }
+  .bookbox select { font: inherit; font-size: 13px; font-weight: 700; color: var(--paper-ink); background: transparent; border: 0; border-bottom: 2px solid var(--paper-ink); padding: 3px 0; }
+  .bookbox .label { color: var(--paper-ink-2); font-weight: 400; letter-spacing: .04em; text-transform: none; font-size: 11px; }
+  .compare .trow span { color: var(--paper-ink-2); }
+  .hand { padding: 12px 20px 16px; border-top: 2px dashed var(--paper-line); display: flex; flex-direction: column; gap: 8px; }
+  .go { display: block; text-align: center; padding: 10px 12px; background: var(--paper-ink); color: var(--paper); text-decoration: none; font-weight: 700; letter-spacing: .04em; font-size: 12.5px; }
+  .go.off { background: transparent; color: var(--paper-ink-2); border: 1px dashed var(--paper-line); font-weight: 400; }
+  .handrow { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .hbtn { appearance: none; background: transparent; border: 1px solid var(--paper-ink); color: var(--paper-ink); font: inherit; font-size: 12px; font-weight: 700; padding: 8px 6px; }
+  .hbtn.primary { border-color: var(--stamp); color: var(--stamp); }
+  .handnote { margin: 0; font-size: 10.5px; line-height: 1.5; color: var(--paper-ink-2); }
+  .carnet { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+  .chead { display: flex; justify-content: space-between; gap: 10px; }
+  .cempty { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; }
+  .ctot { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .ctot div { background: var(--panel-2); padding: 8px 10px; }
+  .ctot i { display: block; font-style: normal; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .ctot b { font-size: 14px; font-weight: 600; }
+  .cbet { border-top: 1px solid var(--line-soft); padding-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+  .cb1 { display: flex; justify-content: space-between; gap: 10px; color: var(--ink-2); }
+  .cb1 .n { font-weight: 700; color: var(--ink); }
+  .cb2 { display: flex; flex-wrap: wrap; gap: 4px 10px; color: var(--ink); }
+  .cb2 b { font-family: "Sometype Mono", ui-monospace, monospace; }
+  .cb3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--ink-3); font-size: 11.5px; }
+  .status { border: 1px solid var(--line); padding: 1px 6px; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+  .cb3 .kill { color: var(--ink-3); }
+
+  .oddsrc { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; padding: 8px 16px; font-size: 12px; color: var(--ink-2); background: var(--panel); border-bottom: 1px solid var(--line-soft); }
+  .oddsrc b { color: var(--ink); font-weight: 600; }
+  .oddsrc .label { font-size: 10px; letter-spacing: .08em; }
+  .flash { animation: flash 900ms ease-out; }
+  @keyframes flash { 0% { background: var(--a-soft); } 100% { background: transparent; } }
+  .got { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--paper-line); padding: 4px 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--paper-ink-2); }
+  .got input { appearance: textfield; -moz-appearance: textfield; width: 64px; border: 0; border-bottom: 1px solid var(--paper-ink); background: transparent; font: inherit; font-size: 14px; font-weight: 700; color: var(--paper-ink); text-align: right; }
+  .got input::-webkit-outer-spin-button, .got input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .cb1 small { font-weight: 400; color: var(--ink-3); }
+
+  /* ---- phones ---- */
+  .minibar { display: none; }
+  @media (max-width: 980px) {
+    .minibar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: center; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: var(--ink); color: var(--panel); text-decoration: none; font-size: 12.5px; font-family: "Sometype Mono", ui-monospace, monospace; box-shadow: 0 -6px 20px rgba(0, 0, 0, .18); }
+    .minibar[hidden] { display: none; }
+    .minibar .mb3 { text-align: right; }
+    .minibar .mb3 b { font-size: 15px; font-weight: 700; }
+    .minibar .mb3 b.loss { color: var(--a); }
+    .minibar .mb4 { font-family: "Familjen Grotesk", sans-serif; font-weight: 600; border: 1px solid rgba(255, 255, 255, .35); padding: 5px 9px; }
+    .wrap { padding-bottom: 96px; }
+    .side { position: static; }
+  }
+  @media (max-width: 720px) {
+    .cert-main { padding: 18px 16px 16px; }
+    .readings { grid-template-columns: 1fr 1fr; }
+    .cert-diag { padding: 14px 16px; }
+    .cert-diag svg { max-width: 220px; margin: 0 auto; }
+    .props { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 8px; padding: 8px; background: var(--panel-2); scrollbar-width: thin; }
+    .prop { flex: 0 0 86%; scroll-snap-align: start; border: 1px solid var(--line); }
+    .seg button { padding: 7px 9px; font-size: 12.5px; white-space: nowrap; }
+    .sechead h2 { font-size: 26px; }
+    .funnel svg text { font-size: 10px; }
+  }
+
+  /* ---- reasons, locks, settlement ---- */
+  .reason { margin: -6px 0 0; font-size: 12px; color: var(--ink-2); }
+  .handrow.three { grid-template-columns: 1fr 1fr 1fr; }
+  .cd { color: var(--stamp); font-style: normal; font-size: 10.5px; letter-spacing: .04em; border: 0; padding: 0; text-transform: none; }
+  .picks.locked { position: relative; }
+  .pick.off { opacity: .45; cursor: default; }
+  .pick.off.won { opacity: 1; border-color: var(--ink); }
+  .lockmsg { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--ink); background: color-mix(in srgb, var(--panel) 55%, transparent); }
+  .ghead small { display: block; font-family: "Familjen Grotesk", sans-serif; font-size: 11.5px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-3); margin-top: 2px; }
+  .status.won { background: var(--h); color: #fff; border-color: var(--h); }
+  .status.lost { background: var(--stamp); color: #fff; border-color: var(--stamp); }
+  .cb2 .won { color: var(--h); } .cb2 .lost { color: var(--stamp); text-decoration: line-through; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -292,162 +423,192 @@
   <header class="cert">
     <div class="cert-main">
       <div class="cert-top">
-        <span class="label">Certificat d'étalonnage · cinq championnats · 1X2</span>
+        <span class="label">Cinq championnats · 1X2 · probabilités calibrées</span>
         <span class="label mono" id="cert-id"></span>
       </div>
-      <h1>Baromètre<br>1X2 <small>Un instrument étalonné face au marché, pas un pronostiqueur</small></h1>
-      <p class="lede">
-        Compose une combinaison, ou laisse le banc t'en proposer trois selon ton objectif.
-        Le ticket imprime <b>ce qu'elle vaut vraiment</b> : la probabilité honnête qu'elle
-        tombe, ce que le bookmaker garde à chaque étape, et ce que tu récupères en moyenne.
-      </p>
+      <h1>Baromètre<br>1X2 <small>Ce que ton combiné vaut vraiment</small></h1>
       <dl class="readings" id="readings"></dl>
     </div>
     <div class="cert-diag">
-      <span class="label"><span>Fiabilité mesurée</span><span id="diag-sub"></span></span>
+      <span class="label"><span>Annoncé vs arrivé</span><span id="diag-sub"></span></span>
       <svg id="reliability" viewBox="0 0 260 240" role="img" aria-label="Diagramme de fiabilité : probabilité annoncée contre fréquence observée"></svg>
-      <p>Chaque point est une tranche de probabilité annoncée, sur une saison jamais vue à l'entraînement. Sur la diagonale, l'instrument dit vrai. La taille du point est le nombre d'annonces.</p>
+      <p>Sur la diagonale, le modèle dit vrai.</p>
     </div>
   </header>
 
+  <!-- ============ combinator ============ -->
   <section class="sec">
     <div class="sechead">
-      <h2>Le combinateur</h2>
-      <p>Des combinaisons, <b>pas des conseils</b>. Chacune a une espérance négative ; l'objectif choisit seulement laquelle perd le moins vite, et pourquoi.</p>
+      <h2>Trois combinés proposés</h2>
+      <p id="pool-sub"></p>
     </div>
     <div class="comb">
       <div class="controls">
         <div class="ctl">
-          <span class="label">Objectif</span>
           <div class="seg" id="obj">
-            <button type="button" data-obj="target" aria-pressed="true">Cote cible</button>
-            <button type="button" data-obj="margin" aria-pressed="false">Marge minimale</button>
-            <button type="button" data-obj="consensus" aria-pressed="false">Consensus</button>
+            <button type="button" data-obj="target" aria-pressed="true" title="La combinaison la plus probable autour d'une cote">Cote cible</button>
+            <button type="button" data-obj="margin" aria-pressed="false" title="Celle où le bookmaker garde le moins">Marge mini</button>
+            <button type="button" data-obj="consensus" aria-pressed="false" title="Celle où nous et le marché sommes d'accord">Consensus</button>
+            <button type="button" data-obj="spread" aria-pressed="false" title="Une sélection par journée, la plus probable">Une par jour</button>
           </div>
         </div>
         <div class="ctl" id="ctl-target">
-          <span class="label">Autour de</span>
-          <label class="range"><input type="range" id="target" min="2" max="30" step="0.5" value="6" aria-label="Cote cible"><output class="mono" id="target-out">6.0</output></label>
+          <span class="label">Cote</span>
+          <label class="range"><input type="range" id="target" min="2" max="60" step="0.5" value="10" aria-label="Cote cible"><output class="mono" id="target-out">10.0</output></label>
         </div>
-        <div class="ctl" id="ctl-legs" hidden>
+        <div class="ctl" id="ctl-legs">
           <span class="label">Sélections</span>
           <div class="seg" id="nlegs">
             <button type="button" data-n="2" aria-pressed="false">2</button>
-            <button type="button" data-n="3" aria-pressed="true">3</button>
-            <button type="button" data-n="4" aria-pressed="false">4</button>
+            <button type="button" data-n="3" aria-pressed="false">3</button>
+            <button type="button" data-n="4" aria-pressed="true">4</button>
+            <button type="button" data-n="5" aria-pressed="false">5</button>
+            <button type="button" data-n="6" aria-pressed="false">6</button>
           </div>
         </div>
-        <p class="why" id="obj-why"></p>
       </div>
       <div class="props" id="props"></div>
     </div>
   </section>
 
+  <!-- ============ matches ============ -->
   <section class="sec">
     <div class="sechead">
-      <h2>La journée</h2>
-      <p id="day-sub"></p>
+      <h2 id="month-title">Les matchs</h2>
+      <p id="month-sub"></p>
     </div>
     <div class="bench">
-      <div class="board">
-        <div class="bhead">
-          <span class="label">Heure</span>
-          <span class="label">Affiche · nous en plein, le marché en clair</span>
-          <span><span class="label">1</span><span class="label">X</span><span class="label">2</span></span>
-          <span></span>
+      <div class="board" id="board">
+        <div class="filters">
+          <div class="frow">
+            <div class="seg" id="view" title="Regrouper par">
+              <button type="button" data-v="day" aria-pressed="true">Par jour</button>
+              <button type="button" data-v="league" aria-pressed="false">Par championnat</button>
+            </div>
+            <div class="seg" id="density" title="Densité">
+              <button type="button" data-dens="compact" aria-pressed="true">Compact</button>
+              <button type="button" data-dens="detailed" aria-pressed="false">Détaillé</button>
+            </div>
+            <input type="search" id="search" class="search" placeholder="Équipe…" aria-label="Filtrer par équipe">
+            <button type="button" class="tog" id="priced" aria-pressed="false" title="Seulement les matchs dont la cote est publiée">Cotés</button>
+            <button type="button" class="tog" id="mine" aria-pressed="false" title="Seulement mes sélections">Mes sélections <em class="n" id="mine-n">0</em></button>
+          </div>
+          <div class="frow strip" id="days"></div>
+          <div class="frow chips" id="leagues"></div>
         </div>
+        <div class="oddsrc" id="oddsrc"></div>
         <div id="rows"></div>
       </div>
+
       <aside class="side">
         <div class="funnel">
-          <span class="label"><span>L'entonnoir</span><span id="funnel-sum"></span></span>
+          <span class="label"><span>Chaque sélection réduit tes chances</span><span id="funnel-sum"></span></span>
           <svg id="funnel-svg" viewBox="0 0 360 60" role="img" aria-label="Rétrécissement de la probabilité combinée à chaque sélection"></svg>
           <div class="fleg">
-            <span><i class="mk"></i>Le marché</span>
+            <span><i class="mk"></i>Marché</span>
             <span><i class="md"></i>Nous</span>
             <span><i class="od"></i>Ce que la cote paie</span>
+            <span>≈ pas encore coté</span>
           </div>
         </div>
-        <div class="ticket">
+        <div class="ticket" id="ticket">
           <div class="thead">
             <div class="tname">BAROMÈTRE 1X2</div>
             <div class="tsub">TICKET NON VALIDE · CALCUL SEULEMENT</div>
           </div>
+          <div class="stakebox">
+            <label for="stake">Ta mise</label>
+            <span class="stakein"><input type="number" id="stake" min="1" max="100000" step="1" value="100" inputmode="decimal" aria-label="Montant misé en euros"><b>€</b></span>
+            <div class="quick" id="quick">
+              <button type="button" data-s="5">5</button><button type="button" data-s="10">10</button><button type="button" data-s="20">20</button><button type="button" data-s="50">50</button><button type="button" data-s="100">100</button>
+            </div>
+          </div>
+          <div class="bookbox">
+            <label for="book">Cotes de</label>
+            <select id="book" aria-label="Bookmaker dont les cotes sont utilisées"></select>
+            <span class="label" id="book-hint"></span>
+          </div>
           <div class="tbody" id="t-legs"></div>
           <div id="t-sums"></div>
+          <div id="t-hand"></div>
+        </div>
+        <div class="carnet">
+          <div class="chead"><span class="label">Mon carnet</span><span class="label" id="carnet-sub"></span></div>
+          <div id="carnet"></div>
         </div>
       </aside>
     </div>
   </section>
 
+  <!-- ============ how to read, folded ============ -->
   <section class="sec">
-    <div class="sechead"><h2>Pourquoi tu ne récupères jamais 100 %</h2></div>
-    <p>
-      Sous chaque cote, la ligne « nous · marché » te dit ce que chacun pense de l'issue. Le retour par euro misé, <b>si le marché a exactement raison</b>, n'est jamais 100 %, et il change selon l'issue : le bookmaker charge sa marge sur les outsiders.
-    </p>
-    <p>
-      Nous l'avons quantifié sur six saisons : cette distorsion est proportionnelle à la marge affichée, à 2 % près. Et ces marges <b>se multiplient</b>. Un combiné de quatre matchs à 5 % de marge chacun en retient 19 %. C'est le seul chiffre qui compte pour une sélection multiple, l'entonnoir le dessine en pointillé rouge, et aucun opérateur ne l'affiche.
-    </p>
-  </section>
-
-  <section class="sec">
-    <div class="sechead">
-      <h2>Ce qui a été joué</h2>
-      <p id="retro-sub"></p>
-    </div>
-    <div class="quad" id="retro-quad"></div>
-    <div class="scroll" id="retro-scroll">
-      <table>
-        <caption>Probabilités publiées avant le coup d'envoi, en pourcentage, dans l'ordre 1 / X / 2. « Favori sorti » indique si l'issue la plus probable selon chacun s'est produite.</caption>
-        <thead><tr>
-          <th scope="col">Date</th><th scope="col">Match</th><th scope="col">Score</th>
-          <th scope="col">Nous</th><th scope="col">Marché</th><th scope="col">Favori nous</th><th scope="col">Favori marché</th>
-        </tr></thead>
-        <tbody id="retro-rows"></tbody>
-      </table>
-    </div>
-    <p id="retro-note"></p>
-  </section>
-
-  <section class="sec">
-    <div class="sechead">
-      <h2>La preuve, tranche par tranche</h2>
-      <p>Quand tu sélectionnes une issue, le ticket rappelle ce que le modèle a obtenu <b>dans la tranche de probabilité de cette annonce</b>. Annoncer 38 % ne veut rien dire tant qu'on ne sait pas si ses 30-40 % arrivent bien un tiers du temps.</p>
-    </div>
-    <div class="scroll">
-      <table>
-        <caption id="bins-caption"></caption>
-        <thead><tr>
-          <th scope="col">Quand il annonce</th><th scope="col">Occasions</th><th scope="col">Il annonce en moyenne</th><th scope="col">C'est arrivé</th><th scope="col">Écart</th>
-        </tr></thead>
-        <tbody id="bin-rows"></tbody>
-      </table>
-    </div>
-    <div class="quad" id="seasons-quad"></div>
-  </section>
-
-  <section class="sec">
-    <div class="sechead"><h2>Ce que ce baromètre ne fera pas</h2></div>
-    <p id="wont"></p>
-    <p>
-      Les features sont construites uniquement à partir de matchs antérieurs, vérifié par vingt tests d'invariance temporelle. Les probabilités du marché sont les cotes dévigorisées par la méthode de puissance. Les prédictions sont publiées avant le coup d'envoi dans un registre en ajout seul, suivi dans git : l'antériorité est prouvée par l'historique des commits, pas par un horodatage que nous écrivons nous-mêmes. Les cotes affichées sont celles capturées au moment de la publication, pas celles de clôture.
-    </p>
+    <details class="fold">
+      <summary><h2>Comment lire</h2><span class="label">ouvrir</span></summary>
+      <div class="foldbody">
+        <div class="how">
+          <div><b>Nous · marché</b><span>Sous chaque cote, notre probabilité puis celle du marché, en %.</span></div>
+          <div><b>Marge</b><span>Ce que le bookmaker garde. Elle se multiplie à chaque sélection.</span></div>
+          <div><b>≈ Prix juste</b><span>Match pas encore coté : 1 ÷ notre probabilité, sans marge.</span></div>
+          <div><b>Récupères en moyenne</b><span>Sur ta mise, ce qui te revient si le marché a raison.</span></div>
+          <div><b>Écart suspect</b><span>Quand nous divergeons du marché, c'est nous qui avons tort.</span></div>
+          <div><b>+</b><span>Forme, buteurs probables et marchés buts. Suppose les titulaires.</span></div>
+          <div><b>Cotes de</b><span>Ton bookmaker : ses prix partout, et sa marge comparée aux autres. Le pari se place chez lui.</span></div>
+          <div><b>Mon carnet</b><span>Ce que tu as vraiment misé, et ce que ça donne une fois joué. Reste dans ce navigateur.</span></div>
+          <div><b>Copier le lien</b><span>Le ticket est dans l'adresse : envoie le lien, l'autre voit le même ticket.</span></div>
+          <div><b>En cours</b><span>Match commencé : plus de sélection possible. Heures dans ton fuseau.</span></div>
+        </div>
+      </div>
+    </details>
+    <details class="fold">
+      <summary><h2>La preuve</h2><span class="label" id="proof-sub"></span></summary>
+      <div class="foldbody">
+        <div class="scroll">
+          <table>
+            <thead><tr><th scope="col">Annoncé</th><th scope="col">Occasions</th><th scope="col">Annoncé en moyenne</th><th scope="col">Arrivé</th><th scope="col">Écart</th></tr></thead>
+            <tbody id="bin-rows"></tbody>
+          </table>
+        </div>
+        <div class="quad" id="seasons-quad"></div>
+        <p class="caveat" id="wont"></p>
+      </div>
+    </details>
   </section>
 
 </div>
+
+<a class="minibar" id="minibar" href="#ticket" hidden>
+  <span class="mb1" id="mb-legs"></span>
+  <span class="mb2" id="mb-odds"></span>
+  <span class="mb3" id="mb-back"></span>
+  <span class="mb4">Voir le ticket ↓</span>
+</a>
 
 <script>
 const DATA = __DATA__;
 
 const OUT = [
-  { key: "H", name: "Victoire domicile", short: "1", cls: "H" },
-  { key: "D", name: "Match nul", short: "X", cls: "D" },
-  { key: "A", name: "Victoire extérieur", short: "2", cls: "A" },
+  { key: "H", name: "Domicile", short: "1", cls: "H" },
+  { key: "D", name: "Nul", short: "X", cls: "D" },
+  { key: "A", name: "Extérieur", short: "2", cls: "A" },
 ];
-const STAKE = 100;
+const LEAGUES = ["Premier League", "La Liga", "Bundesliga", "Serie A", "Ligue 1"];
+let stake = 100;
+try { const saved = Number(localStorage.getItem("barometre.stake")); if (saved >= 1 && saved <= 100000) stake = saved; } catch (e) { /* no storage: keep the default */ }
+function setStake(value) {
+  const v = Math.min(100000, Math.max(1, Math.round(Number(value) * 100) / 100 || 1));
+  stake = v;
+  const input = document.getElementById("stake");
+  if (input && Number(input.value) !== v) input.value = String(v);
+  document.querySelectorAll("[data-s]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.s) === v)));
+  try { localStorage.setItem("barometre.stake", String(v)); } catch (e) { /* ignore */ }
+}
 const picks = new Map();
 const open = new Set();
-let objective = "target", target = 6, nLegs = 3, loadedProp = null;
+let objective = "target", target = 10, nLegs = 4, loadedProp = null;
+let view = "day", density = "compact", dayFilter = "all", pricedOnly = false, mineOnly = false, search = "";
+const leagueOn = new Set(LEAGUES);
+const collapsed = new Set();
+let collapsedInit = false;
 
 const p1 = (x) => (100 * x).toFixed(1);
 const p0 = (x) => Math.round(100 * x);
@@ -457,211 +618,292 @@ const byId = (id) => DATA.upcoming.find((x) => x.id === id);
 const binOf = (p) => DATA.bins.find((b) => p >= b.lo && p < b.hi) || DATA.bins[DATA.bins.length - 1];
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const legName = (m, o) => o === 1 ? `${m.home} – ${m.away}` : (o === 0 ? m.home : m.away);
-const frDate = (iso) => { const [y, mo, d] = iso.split("-"); return `${d}.${mo}.${y}`; };
-const PRICED = DATA.upcoming.filter((m) => m.odds);
+const DAYS = ["dim", "lun", "mar", "mer", "jeu", "ven", "sam"];
+const DAYS_LONG = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const dObj = (iso) => new Date(iso + "T12:00:00");
+const dayShort = (iso) => `${DAYS[dObj(iso).getDay()]} ${dObj(iso).getDate()}`;
+const dayLong = (iso) => `${DAYS_LONG[dObj(iso).getDay()]} ${dObj(iso).getDate()} ${MONTHS[dObj(iso).getMonth()]}`;
+const frDate = (iso) => `${iso.slice(8)}.${iso.slice(5, 7)}`;
+const daysFromToday = (iso) => Math.round((new Date(iso) - new Date(DATA.meta.today)) / 86400000);
+/* The bookmaker whose prices are shown everywhere. "AVG" is the market average. */
+const BOOKS = DATA.meta.books;
+let book = "AVG";
+try { const saved = localStorage.getItem("barometre.book"); if (saved && BOOKS.some((b) => b.key === saved)) book = saved; } catch (e) { /* default */ }
+const bookOf = (k) => BOOKS.find((b) => b.key === k);
+const bookOdds = (m, k = book) => !m.odds ? null : (k === "AVG" || !m.books || !m.books[k]) ? m.odds : m.books[k];
+const overroundOf = (m) => m.odds ? bookOdds(m).reduce((a, o) => a + 1 / o, 0) - 1 : null;
+const legOdds = (m, o) => m.odds ? bookOdds(m)[o] : 1 / m.model[o];
 
-/* The gap to the market, season by season: quoted as a range, never a mean. */
+/* Kick-off is shipped in UTC and shown in the visitor's own time zone. */
+const NOW = Date.now();
+const kick = (m) => new Date(m.kickoff);
+const timeLocal = (m) => kick(m).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+const stateOf = (m) => m.result ? "done" : (kick(m).getTime() <= NOW ? "live" : "open");
+const countdown = (m) => {
+  const ms = kick(m).getTime() - NOW;
+  if (stateOf(m) !== "open" || ms > 36e5 * 24) return "";
+  const h = Math.floor(ms / 36e5), mi = Math.floor((ms % 36e5) / 6e4);
+  return h ? `dans ${h} h ${String(mi).padStart(2, "0")}` : `dans ${mi} min`;
+};
+
+/* The bet log: what was really staked, kept in this browser only. */
+let carnet = [];
+try { carnet = JSON.parse(localStorage.getItem("barometre.carnet") || "[]"); if (!Array.isArray(carnet)) carnet = []; } catch (e) { carnet = []; }
+function saveCarnet() { try { localStorage.setItem("barometre.carnet", JSON.stringify(carnet)); } catch (e) { /* ignore */ } }
+const legQ = (m, o) => m.odds ? m.market[o] : m.model[o];
+const s2 = (x) => x < 0.001 ? `${(100 * x).toFixed(2)} %` : `${p1(x)} %`;
+
+/* The combinator's pool: date, league and pricing filters. The list adds team search and "mine". */
+function pool() {
+  return DATA.upcoming.filter((m) => stateOf(m) === "open" &&
+    (dayFilter === "all" || (dayFilter === "week" ? daysFromToday(m.date) < 7 : m.date === dayFilter))
+    && leagueOn.has(m.league) && (!pricedOnly || m.odds));
+}
+function visible() {
+  const q = search.trim().toLowerCase();
+  return pool().filter((m) => (!q || m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q)) && (!mineOnly || picks.has(m.id)));
+}
+
 const GAPS = DATA.standing.seasons.map((s) => s.gap);
-const GAP_MIN = Math.min(...GAPS), GAP_MAX = Math.max(...GAPS);
-const N_SEASONS = GAPS.length;
-const GAP_TXT = N_SEASONS > 1
-  ? `entre ${fr(GAP_MIN)} et ${fr(GAP_MAX)} derrière le marché sur ${N_SEASONS} saisons`
-  : `${fr(GAP_MIN)} derrière le marché`;
-const GAP_SHORT = `${fr(GAP_MIN, 3)} à ${fr(GAP_MAX, 3)}`;
+const GAP_MIN = Math.min(...GAPS), GAP_MAX = Math.max(...GAPS), N_SEASONS = GAPS.length;
+const GAP_SHORT = `${fr(GAP_MIN)} à ${fr(GAP_MAX)}`;
 
 /* ---------------- certificate ---------------- */
 function renderCert() {
-  const s = DATA.standing;
-  const last = s.seasons[s.seasons.length - 1];
-  document.getElementById("cert-id").textContent = `N° ${DATA.meta.modelHash.toUpperCase()} · T = ${DATA.meta.temperature}`;
+  const s = DATA.standing, last = s.seasons[s.seasons.length - 1];
+  document.getElementById("cert-id").textContent = `N° ${DATA.meta.modelHash.toUpperCase().slice(0, 8)} · ${DATA.meta.publishedAt.slice(0, 10)}`;
   document.getElementById("readings").innerHTML = `
-    <div><i>Écart au marché, log-loss</i><b class="n">${GAP_SHORT}</b></div>
-    <div><i>Constant sur</i><b class="n">${N_SEASONS} saison${N_SEASONS > 1 ? "s" : ""}</b></div>
-    <div><i>Erreur de calibration, ${esc(last.season)}</i><b class="n">${(100 * s.ece).toFixed(1)} pt</b></div>
-    <div><i>Dernière publication</i><b class="n">${esc(DATA.meta.publishedAt.slice(0, 16))}</b></div>`;
+    <div><i>Derrière le marché</i><b class="n">${GAP_SHORT}</b></div>
+    <div><i>Saisons vérifiées</i><b class="n">${N_SEASONS}</b></div>
+    <div><i>Erreur de calibration</i><b class="n">${(100 * s.ece).toFixed(1)} pt</b></div>
+    <div><i>Matchs à venir</i><b class="n">${DATA.upcoming.filter((m) => !m.result).length}</b></div>`;
   const nAnn = DATA.bins.reduce((a, b) => a + b.n, 0);
-  document.getElementById("diag-sub").textContent = `${s.bins_season} · ${nAnn.toLocaleString("fr-FR")} annonces`;
-
+  document.getElementById("diag-sub").textContent = `${s.bins_season} · ${nAnn.toLocaleString("fr-FR")}`;
+  document.getElementById("proof-sub").textContent = `${nAnn.toLocaleString("fr-FR")} annonces, saison ${s.bins_season}`;
   const W = 260, H = 240, L = 34, T = 10, R = 10, B = 30;
   const x = (p) => L + p * (W - L - R), y = (p) => T + (1 - p) * (H - T - B);
   const ticks = [0, .25, .5, .75, 1];
-  const bins = DATA.bins.filter((b) => b.n > 0);
-  const nmax = Math.max(...bins.map((b) => b.n));
+  const bins = DATA.bins.filter((b) => b.n > 0), nmax = Math.max(...bins.map((b) => b.n));
   document.getElementById("reliability").innerHTML = `
-    ${ticks.map((t) => `<line x1="${x(t)}" y1="${y(0)}" x2="${x(t)}" y2="${y(1)}" stroke="var(--line-soft)" />
-                         <line x1="${x(0)}" y1="${y(t)}" x2="${x(1)}" y2="${y(t)}" stroke="var(--line-soft)" />`).join("")}
+    ${ticks.map((t) => `<line x1="${x(t)}" y1="${y(0)}" x2="${x(t)}" y2="${y(1)}" stroke="var(--line-soft)" /><line x1="${x(0)}" y1="${y(t)}" x2="${x(1)}" y2="${y(t)}" stroke="var(--line-soft)" />`).join("")}
     <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--ink-3)" stroke-dasharray="3 3" />
-    <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(0)}" stroke="var(--ink-2)" />
-    <line x1="${x(0)}" y1="${y(0)}" x2="${x(0)}" y2="${y(1)}" stroke="var(--ink-2)" />
-    ${ticks.map((t) => `<text x="${x(t)}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${p0(t)}</text>
-                         <text x="${L - 6}" y="${y(t) + 3.5}" text-anchor="end" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${p0(t)}</text>`).join("")}
+    <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(0)}" stroke="var(--ink-2)" /><line x1="${x(0)}" y1="${y(0)}" x2="${x(0)}" y2="${y(1)}" stroke="var(--ink-2)" />
+    ${ticks.map((t) => `<text x="${x(t)}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${p0(t)}</text><text x="${L - 6}" y="${y(t) + 3.5}" text-anchor="end" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${p0(t)}</text>`).join("")}
     <text x="${x(.5)}" y="${H - 0.5}" text-anchor="middle" font-size="9" fill="var(--ink-3)" letter-spacing=".08em">ANNONCÉ, %</text>
-    <text x="10" y="${y(.5)}" text-anchor="middle" font-size="9" fill="var(--ink-3)" letter-spacing=".08em" transform="rotate(-90 10 ${y(.5)})">OBSERVÉ, %</text>
+    <text x="10" y="${y(.5)}" text-anchor="middle" font-size="9" fill="var(--ink-3)" letter-spacing=".08em" transform="rotate(-90 10 ${y(.5)})">ARRIVÉ, %</text>
     ${bins.map((b) => `<circle cx="${x(b.predicted)}" cy="${y(b.observed)}" r="${4 + 9 * Math.sqrt(b.n / nmax)}" fill="var(--h-soft)" stroke="var(--h)" stroke-width="1.5" />`).join("")}
     ${bins.map((b) => `<circle cx="${x(b.predicted)}" cy="${y(b.observed)}" r="1.6" fill="var(--ink)" />`).join("")}`;
 }
 
-/* ---------------- board ---------------- */
-function renderRows() {
-  const n = DATA.upcoming.length, unpriced = n - PRICED.length;
-  document.getElementById("day-sub").innerHTML = n
-    ? `${n} match${n > 1 ? "s" : ""} à venir, ${n > 1 ? "prédits" : "prédit"} et ${n > 1 ? "publiés" : "publié"} avant le coup d'envoi, dernière publication le ${esc(DATA.meta.publishedAt)}.
-       ${unpriced ? `<b>${unpriced}</b> sans cote capturée : ${unpriced > 1 ? "ils sont affichés" : "il est affiché"} mais ${unpriced > 1 ? "ne peuvent" : "ne peut"} pas entrer dans un ticket.` : "Clique sur une cote pour l'ajouter au ticket."}`
-    : `Aucun match à venir dans le registre. La prochaine publication remplira ce tableau.`;
-
-  document.getElementById("rows").innerHTML = DATA.upcoming.map((m) => {
-    const chosen = picks.get(m.id);
-    const rail = (probs, cls) => `<span class="rail ${cls}">${OUT.map((o, i) => `<i class="${o.cls}" style="width:${100 * probs[i]}%"></i>`).join("")}</span>`;
-    const pk = m.odds
-      ? `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
-          aria-label="${esc(o.name)}, cote ${m.odds[i].toFixed(2)}">
-          <b class="n">${m.odds[i].toFixed(2)}</b>
-          <span class="n"><em>${p0(m.model[i])}</em> · ${p0(m.market[i])}</span>
-        </button>`).join("")}</div>`
-      : `<div class="nopick"><span class="label">Sans cote capturée</span>${OUT.map((o, i) => `<b class="n">${p0(m.model[i])}</b>`).join("")}</div>`;
-    return `<div class="row">
-      <div class="rmain">
-        <div class="when"><b class="n">${esc(m.time || "–")}</b>${esc(m.league)}<br><em>${frDate(m.date)}</em></div>
-        <div class="fixture">
-          <div class="teams"><span>${esc(m.home)}</span><i>${m.overround === null ? "" : `MARGE ${p1(m.overround)} %`}</i><span>${esc(m.away)}</span></div>
-          <div class="rails">
-            <span class="label">Nous</span>${rail(m.model, "model")}
-            ${m.market ? `<span class="label">Marché</span>${rail(m.market, "market")}` : ""}
-          </div>
-        </div>
-        ${pk}
-        ${m.cards ? `<button type="button" class="more" data-d="${m.id}" aria-expanded="${open.has(m.id)}" aria-label="Détails : forme, buteurs probables et marchés buts">${open.has(m.id) ? "–" : "+"}</button>` : "<span></span>"}
-      </div>
-      ${m.cards ? `<div class="drawer ${open.has(m.id) ? "on" : ""}">${drawer(m)}</div>` : ""}
-    </div>`;
-  }).join("");
+/* ---------------- filters ---------------- */
+function renderFilters() {
+  const all = DATA.upcoming, vis = visible(), pl = pool();
+  const days = [...new Set(all.map((m) => m.date))];
+  document.getElementById("month-title").textContent = `${all.length} matchs · ${days.length} jours`;
+  const priced = all.filter((m) => m.odds).length;
+  document.getElementById("month-sub").innerHTML = `${priced} cotés, ${all.length - priced} pas encore. Affichés : <b>${vis.length}</b>.`;
+  document.getElementById("pool-sub").innerHTML = `Parmi les <b>${pl.length}</b> matchs filtrés ci-dessous. Des combinaisons, pas des conseils : toutes perdent en moyenne.`;
+  document.getElementById("days").innerHTML = [
+    `<button type="button" class="chip" data-day="all" aria-pressed="${dayFilter === "all"}">Tout <em>${all.length}</em></button>`,
+    `<button type="button" class="chip" data-day="week" aria-pressed="${dayFilter === "week"}">7 jours <em>${all.filter((m) => daysFromToday(m.date) < 7).length}</em></button>`,
+    ...days.map((d) => `<button type="button" class="chip" data-day="${d}" aria-pressed="${dayFilter === d}">${dayShort(d)} <em>${all.filter((m) => m.date === d).length}</em></button>`),
+  ].join("");
+  document.getElementById("leagues").innerHTML = LEAGUES.map((l) =>
+    `<button type="button" class="chip" data-l="${esc(l)}" aria-pressed="${leagueOn.has(l)}">${esc(l)} <em>${all.filter((m) => m.league === l).length}</em></button>`).join("");
+  document.getElementById("priced").setAttribute("aria-pressed", String(pricedOnly));
+  document.getElementById("mine").setAttribute("aria-pressed", String(mineOnly));
+  document.getElementById("mine-n").textContent = picks.size;
 }
 
+/* ---------------- board ---------------- */
+function groupsOf(list) {
+  const key = view === "day" ? (m) => m.date : (m) => m.league;
+  const label = view === "day" ? dayLong : (l) => l;
+  const order = view === "day" ? [...new Set(list.map(key))] : LEAGUES.filter((l) => list.some((m) => m.league === l));
+  return order.map((k) => ({ key: k, label: label(k), items: list.filter((m) => key(m) === k) }));
+}
+function renderRows() {
+  const vis = visible();
+  const groups = groupsOf(vis);
+  if (!collapsedInit && groups.length) { groups.slice(1).forEach((g) => collapsed.add(g.key)); collapsedInit = true; }
+  if (!vis.length) { document.getElementById("rows").innerHTML = `<div class="noprop">Aucun match avec ces filtres.</div>`; return; }
+  document.getElementById("rows").innerHTML = groups.map((g) => {
+    const isOpen = !collapsed.has(g.key);
+    const later = g.items.every((m) => !m.odds);
+    const favs = g.items.filter((m) => Math.max(...m.model) >= 0.6).sort((a, b) => Math.max(...b.model) - Math.max(...a.model)).slice(0, 3)
+      .map((m) => { const k = m.model.indexOf(Math.max(...m.model)); return k === 0 ? m.home : m.away; });
+    const tight = g.items.filter((m) => Math.max(...m.model) < 0.42).length;
+    const summary = isOpen ? "" : `<small>${favs.length ? `Favoris nets : ${favs.map(esc).join(", ")}` : "Aucun favori net"}${tight ? ` · ${tight} match${tight > 1 ? "s" : ""} serré${tight > 1 ? "s" : ""}` : ""}</small>`;
+    const head = `<button type="button" class="ghead" data-g="${esc(g.key)}" aria-expanded="${isOpen}">
+      <span>${esc(g.label)}${summary}</span>
+      <span class="n">${g.items.length} match${g.items.length > 1 ? "s" : ""}${later ? " · ≈" : ""}${g.items.filter((m) => picks.has(m.id)).length ? ` · ${g.items.filter((m) => picks.has(m.id)).length} au ticket` : ""} <i>${isOpen ? "–" : "+"}</i></span></button>`;
+    return head + (isOpen ? g.items.map(density === "compact" ? rowCompact : rowDetailed).join("") : "");
+  }).join("");
+}
+function pickButtons(m, compact) {
+  const chosen = picks.get(m.id);
+  const st = stateOf(m);
+  if (st !== "open") {
+    return `<div class="picks locked" aria-label="${st === "done" ? "Terminé" : "En cours"}">${OUT.map((o, i) => `<span class="pick ${o.cls} off ${m.result === o.key ? "won" : ""}"><b class="n">${m.odds ? legOdds(m, i).toFixed(2) : "–"}</b>${compact ? "" : `<span class="n">${p0(m.model[i])}</span>`}</span>`).join("")}
+      <span class="lockmsg">${st === "done" ? `Terminé${m.score ? ` ${esc(m.score)}` : ""}` : "En cours"}</span></div>`;
+  }
+  return `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls} ${m.odds ? "" : "fair"}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
+      aria-label="${esc(o.name)}, ${m.odds ? `cote ${legOdds(m, i).toFixed(2)}` : `prix juste ${(1 / m.model[i]).toFixed(2)}`}" title="${esc(o.name)} · nous ${p0(m.model[i])} %${m.odds ? ` · marché ${p0(m.market[i])} %` : " · pas encore coté"}">
+      <b class="n">${m.odds ? "" : "≈"}${legOdds(m, i).toFixed(2)}</b>
+      ${compact ? "" : `<span class="n"><em>${p0(m.model[i])}</em>${m.odds ? ` · ${p0(m.market[i])}` : ""}</span>`}
+    </button>`).join("")}</div>`;
+}
+function rowCompact(m) {
+  return `<div class="row compact">
+    <div class="rmain">
+      <div class="when"><b class="n">${timeLocal(m)}</b>${view === "day" ? esc(m.league) : frDate(m.date)}${countdown(m) ? `<br><em class="cd">${countdown(m)}</em>` : ""}</div>
+      <div class="fixture"><div class="teams"><span>${esc(m.home)}</span><i>–</i><span>${esc(m.away)}</span></div></div>
+      ${pickButtons(m, true)}
+      ${m.cards ? `<button type="button" class="more" data-d="${m.id}" aria-expanded="${open.has(m.id)}" aria-label="Détails">${open.has(m.id) ? "–" : "+"}</button>` : "<span></span>"}
+    </div>
+    ${m.cards && open.has(m.id) ? `<div class="drawer on">${drawer(m)}</div>` : ""}
+  </div>`;
+}
+function rowDetailed(m) {
+  const rail = (probs, cls) => `<span class="rail ${cls}">${OUT.map((o, i) => `<i class="${o.cls}" style="width:${100 * probs[i]}%"></i>`).join("")}</span>`;
+  return `<div class="row">
+    <div class="rmain">
+      <div class="when"><b class="n">${timeLocal(m)}</b>${esc(m.league)}<br><em>${frDate(m.date)}</em>${countdown(m) ? `<br><em class="cd">${countdown(m)}</em>` : ""}</div>
+      <div class="fixture">
+        <div class="teams"><span>${esc(m.home)}</span><i>${m.odds ? `MARGE ${p1(overroundOf(m))} %` : "≈"}</i><span>${esc(m.away)}</span></div>
+        <div class="rails">
+          <span class="label">Nous</span>${rail(m.model, "model")}
+          ${m.market ? `<span class="label">Marché</span>${rail(m.market, "market")}` : ""}
+        </div>
+      </div>
+      ${pickButtons(m, false)}
+      ${m.cards ? `<button type="button" class="more" data-d="${m.id}" aria-expanded="${open.has(m.id)}" aria-label="Détails">${open.has(m.id) ? "–" : "+"}</button>` : "<span></span>"}
+    </div>
+    ${m.cards && open.has(m.id) ? `<div class="drawer on">${drawer(m)}</div>` : ""}
+  </div>`;
+}
 function drawer(m) {
-  const c = m.cards;
-  const sides = [["Domicile", c.home], ["Extérieur", c.away]];
-  const meta = DATA.meta.scorers;
+  const c = m.cards, sides = [["Domicile", c.home], ["Extérieur", c.away]];
   return `
-    <div class="label dtitle">Les deux équipes, sur leurs cinq derniers matchs</div>
     <div class="dgrid">
       ${sides.map(([side, t]) => `<div>
         <div class="tteam">${esc(t.team)}<em>${side} · Elo ${t.elo}</em></div>
         <div class="kv"><span>Forme</span><span class="pills">${t.form.map((f) => `<i class="${f}">${f}</i>`).join("")}</span></div>
-        <div class="kv"><span>Points pris</span><b class="n">${t.points5} / 15</b></div>
-        <div class="kv"><span>Buts marqués / encaissés, par match</span><b class="n">${t.gf.toFixed(2)} · ${t.ga.toFixed(2)}</b></div>
-        <div class="kv"><span>Occasions créées / concédées, xG hors penalty</span><b class="n">${t.xf.toFixed(2)} · ${t.xa.toFixed(2)}</b></div>
-        <div class="kv"><span>Écart de finition sur 5 matchs</span><b class="n">${(5 * (t.gf - t.xf)) > 0 ? "+" : ""}${(5 * (t.gf - t.xf)).toFixed(1)}</b></div>
+        <div class="kv"><span>Points sur 5 matchs</span><b class="n">${t.points5} / 15</b></div>
+        <div class="kv"><span>Buts pour · contre</span><b class="n">${t.gf.toFixed(1)} · ${t.ga.toFixed(1)}</b></div>
+        <div class="kv"><span>xG pour · contre</span><b class="n">${t.xf.toFixed(1)} · ${t.xa.toFixed(1)}</b></div>
       </div>`).join("")}
     </div>
-    <div class="label dtitle">Qui peut marquer</div>
+    <div class="label dtitle">Qui peut marquer <span class="hint" title="Probabilité de marquer au moins une fois hors penalty, s'il joue 90 minutes. Ignore blessures et compos.">?</span></div>
     <div class="dgrid">
-      ${sides.map(([side, t]) => `<div>
-        <div class="tteam">${esc(t.team)}<em>${side}</em></div>
-        <div class="sc">${t.scorers.map((p) => `<div class="scrow">
-            <span class="scname">${esc(p.player)}<em>${p.np_goals} buts / ${p.np_xg} attendus</em></span>
+      ${sides.map(([side, t]) => `<div><div class="sc">${t.scorers.map((p) => `<div class="scrow">
+            <span class="scname">${esc(p.player)}<em>${p.np_goals} b · ${p.np_xg} xG</em></span>
             <span class="scmeter"><i style="width:${Math.min(100, 100 * p.p_scores / 0.45)}%"></i></span>
             <span class="scpct n">${p0(p.p_scores)} %</span>
-          </div>`).join("")}</div>
-      </div>`).join("")}
+          </div>`).join("")}</div></div>`).join("")}
     </div>
-    <div class="label dtitle">Marchés buts</div>
     <div class="goals">
-      <div class="gcell"><b class="n">${c.lambdaHome.toFixed(2)} – ${c.lambdaAway.toFixed(2)}</b><span>Buts attendus</span></div>
+      <div class="gcell"><b class="n">${c.lambdaHome.toFixed(1)} – ${c.lambdaAway.toFixed(1)}</b><span>Buts attendus</span></div>
       <div class="gcell"><b class="n">${p0(c.btts)} %</b><span>Les deux marquent</span></div>
-      <div class="gcell"><b class="n">${p0(c.over25)} %</b><span>Plus de 2,5 buts</span></div>
-      <div class="gcell"><b class="n">${p0(1 - c.over25)} %</b><span>Moins de 2,5 buts</span></div>
-    </div>
-    <p class="caveat">
-      « Qui peut marquer » est la probabilité qu'un joueur marque au moins une fois hors penalty : son rythme
-      d'xG par 90 minutes sur cette saison et la précédente, rétréci vers la moyenne de la ligue avec le poids
-      de ${meta.priorMatches} matchs, puis recalé sur ce match. Seuls les joueurs à plus de ${meta.minMinutes} minutes
-      sont retenus. Ce calcul <b>suppose que le joueur démarre et joue 90 minutes</b> et ignore blessures,
-      suspensions et rotations. Un joueur transféré cet été apparaît sous son nouveau club dès qu'il y a joué.
-      Les marchés buts sont une estimation de Poisson figée à la publication, <b>pas des probabilités validées
-      comme le 1X2</b>.
-    </p>`;
+      <div class="gcell"><b class="n">${p0(c.over25)} %</b><span>+ de 2,5 buts</span></div>
+      <div class="gcell"><b class="n">${p0(1 - c.over25)} %</b><span>− de 2,5 buts</span></div>
+    </div>`;
 }
 
 /* ---------------- combinator ---------------- */
-function combos() {
-  const out = [];
-  const rec = (start, legs) => {
-    if (legs.length >= 2) out.push(legs.slice());
-    if (legs.length === 4) return;
-    for (let i = start; i < PRICED.length; i++)
-      for (let o = 0; o < 3; o++) { legs.push([PRICED[i].id, o]); rec(i + 1, legs); legs.pop(); }
-  };
-  rec(0, []);
-  return out.map(score);
-}
 function score(legs) {
-  let pm = 1, pq = 1, odds = 1, gap = 0;
+  let pm = 1, pq = 1, odds = 1, gap = 0, fair = 0;
   for (const [id, o] of legs) {
     const m = byId(id);
-    pm *= m.model[o]; pq *= m.market[o]; odds *= m.odds[o];
-    gap += Math.abs(m.model[o] - m.market[o]);
+    pm *= m.model[o]; pq *= legQ(m, o); odds *= legOdds(m, o);
+    if (m.odds) gap += Math.abs(m.model[o] - m.market[o]); else fair += 1;
   }
-  return { legs, pm, pq, odds, back: pq * odds, gap: gap / legs.length };
+  return { legs, pm, pq, odds, back: pq * odds, gap: gap / Math.max(1, legs.length - fair), fair };
 }
-const ALL = combos();
-
-const WHY = {
-  target: "Parmi toutes les combinaisons à 15 % de la cote visée, celles que le marché juge les plus probables. Le marché parce qu'il est mesuré meilleur que nous.",
-  margin: "Les combinaisons où le bookmaker garde le moins : sa marge pèse plus sur les outsiders, donc ceci favorise les favoris.",
-  consensus: "Les sélections où nous et le marché disons presque la même chose. Là où nous divergeons, c'est presque toujours nous qui avons tort.",
-};
+const ASSUMED_MARGIN = 0.06;
+function legScore(m, o) {
+  if (objective === "margin") return m.odds ? legQ(m, o) * m.odds[o] : 1 / (1 + ASSUMED_MARGIN);
+  if (objective === "consensus") return m.odds ? -Math.abs(m.model[o] - m.market[o]) : -1;
+  return m.odds ? legQ(m, o) : legQ(m, o) / (1 + ASSUMED_MARGIN);
+}
+function candidates(list) {
+  return list.map((m) => { let k = 0; for (let o = 1; o < 3; o++) if (legScore(m, o) > legScore(m, k)) k = o; return { m, o: k, s: legScore(m, k) }; })
+    .filter((c) => c.s > -1).sort((a, b) => b.s - a.s).slice(0, 16);
+}
+function subsets(items, size, start = 0, cur = [], out = []) {
+  if (cur.length === size) { out.push(cur.slice()); return out; }
+  for (let i = start; i < items.length; i++) { cur.push(items[i]); subsets(items, size, i + 1, cur, out); cur.pop(); }
+  return out;
+}
 function proposals() {
-  let pool;
-  if (objective === "target") {
-    pool = ALL.filter((c) => c.odds >= target * 0.85 && c.odds <= target * 1.15).sort((a, b) => b.pq - a.pq || b.back - a.back);
-  } else if (objective === "margin") {
-    pool = ALL.filter((c) => c.legs.length === nLegs).sort((a, b) => b.back - a.back || b.pq - a.pq);
+  const list = pool();
+  let combos = [];
+  if (objective === "spread") {
+    const days = [...new Set(list.map((m) => m.date))];
+    const perDay = days.map((d) => candidates(list.filter((m) => m.date === d))[0]).filter(Boolean);
+    combos = subsets(perDay, Math.min(nLegs, perDay.length)).map((c) => score(c.map((x) => [x.m.id, x.o]))).sort((a, b) => b.pq - a.pq);
+  } else if (objective === "target") {
+    const cands = candidates(list);
+    for (let k = 2; k <= 6; k++) combos.push(...subsets(cands, k).map((c) => score(c.map((x) => [x.m.id, x.o]))));
+    combos = combos.filter((c) => c.odds >= target * 0.85 && c.odds <= target * 1.15).sort((a, b) => b.pq - a.pq || b.back - a.back);
   } else {
-    pool = ALL.filter((c) => c.legs.length === nLegs).sort((a, b) => a.gap - b.gap || b.pq - a.pq);
+    const cands = candidates(list);
+    combos = subsets(cands, Math.min(nLegs, cands.length)).map((c) => score(c.map((x) => [x.m.id, x.o])));
+    combos.sort(objective === "margin" ? (a, b) => b.back - a.back || b.pq - a.pq : (a, b) => a.gap - b.gap || b.pq - a.pq);
   }
   const picked = [];
-  for (const c of pool) {
-    const sig = c.legs.map((l) => l.join(":"));
-    if (picked.some((p) => sig.filter((s) => p.sig.includes(s)).length > 1)) continue;
+  for (const c of combos) {
+    const sig = c.legs.map((l) => l.join(":")).sort();
+    if (picked.some((p) => sig.filter((s) => p.sig.includes(s)).length > Math.floor(sig.length / 2))) continue;
     picked.push({ ...c, sig });
     if (picked.length === 3) break;
   }
   return picked;
 }
+function reasonOf(c) {
+  const legs = c.legs.map(([id, o]) => [byId(id), o]);
+  const nHome = legs.filter(([, o]) => o === 0).length, nAway = legs.filter(([, o]) => o === 2).length, nDraw = legs.filter(([, o]) => o === 1).length;
+  const priced = legs.filter(([m]) => m.odds);
+  const margin = priced.length ? priced.reduce((a, [m]) => a + overroundOf(m), 0) / priced.length : null;
+  const gap = priced.length ? 100 * priced.reduce((a, [m, o]) => a + Math.abs(m.model[o] - m.market[o]), 0) / priced.length : null;
+  const nDays = new Set(legs.map(([m]) => m.date)).size;
+  const who = [nHome ? `${nHome} favori${nHome > 1 ? "s" : ""} à domicile` : "", nAway ? `${nAway} à l'extérieur` : "", nDraw ? `${nDraw} nul${nDraw > 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
+  if (objective === "margin") return `${who} · marge ${margin === null ? "≈" : p1(margin) + " %"} en moyenne`;
+  if (objective === "consensus") return `${who} · nous et le marché à ${gap === null ? "–" : gap.toFixed(1)} pt d'écart`;
+  if (objective === "spread") return `le plus probable de chaque jour · ${nDays} jours`;
+  return `${who} · ${nDays} journée${nDays > 1 ? "s" : ""}${c.fair ? ` · ${c.fair} sans cote` : ""}`;
+}
 function renderProps() {
-  document.getElementById("obj-why").textContent = WHY[objective];
   document.getElementById("ctl-target").hidden = objective !== "target";
   document.getElementById("ctl-legs").hidden = objective === "target";
-  const el = document.getElementById("props");
-  if (PRICED.length < 2) {
-    el.innerHTML = `<div class="noprop">Il faut au moins deux matchs à venir avec une cote capturée pour proposer une combinaison. ${PRICED.length === 1 ? "Un seul en a une pour l'instant." : "Aucun n'en a pour l'instant."}</div>`;
-    return;
-  }
-  const props = proposals();
-  if (!props.length) { el.innerHTML = `<div class="noprop">Aucune combinaison de 2 à 4 sélections n'approche cette cote sur cette journée.</div>`; return; }
+  const el = document.getElementById("props"), props = proposals();
+  if (!props.length) { el.innerHTML = `<div class="noprop">Rien ne colle. Élargis les filtres ou change la cote.</div>`; return; }
   el.innerHTML = props.map((c, idx) => {
-    const keep = 1 - c.back;
+    const keep = Math.max(0, 1 - c.back);
     let cum = 1;
-    const shrink = c.legs.map(([id, o]) => { cum *= byId(id).market[o]; return cum; });
+    const shrink = c.legs.map(([id, o]) => { cum *= legQ(byId(id), o); return cum; });
     const sig = c.sig.join("|");
+    const dates = [...new Set(c.legs.map(([id]) => byId(id).date))].sort();
     return `<article class="prop">
       <div class="prop-top">
-        <span class="label">${["Première", "Deuxième", "Troisième"][idx]} proposition · ${c.legs.length} sélections</span>
+        <span class="label">${c.legs.length} sélections · ${dates.length > 1 ? `${frDate(dates[0])} → ${frDate(dates[dates.length - 1])}` : frDate(dates[0])}</span>
         <span class="prop-odds disp"><small>COTE</small>${c.odds.toFixed(2)}</span>
       </div>
+      <p class="reason">${esc(reasonOf(c))}</p>
       <div class="legs">${c.legs.map(([id, o]) => { const m = byId(id); return `<div class="leg">
           <i class="${OUT[o].cls}"></i>
-          <div class="lt"><b>${esc(legName(m, o))}</b><span>${esc(OUT[o].name)} · ${esc(m.home)} – ${esc(m.away)}</span></div>
-          <span class="lo n">${m.odds[o].toFixed(2)}</span>
+          <div class="lt"><b>${esc(legName(m, o))}</b><span>${esc(m.home)} – ${esc(m.away)} · ${frDate(m.date)}</span></div>
+          <span class="lo n">${m.odds ? "" : "≈"}${legOdds(m, o).toFixed(2)}</span>
         </div>`; }).join("")}</div>
       <div class="shrink" aria-hidden="true">${[1, ...shrink].map((p) => `<i style="height:${Math.max(6, 100 * p)}%"></i>`).join("")}</div>
       <div class="prop-kv">
-        <span>Ça tombe, marché<b class="n">${p1(c.pq)} %</b></span>
-        <span>Ça tombe, nous<b class="n">${p1(c.pm)} %</b></span>
-        <span class="bad">Le bookmaker garde<b class="n">${p1(keep)} %</b></span>
-        <span class="bad">Sur 100 €, en moyenne<b class="n">${money(100 * c.back)} €</b></span>
+        <span>Ça passe<b class="n">${s2(c.pq)}</b></span>
+        <span>Si ça passe<b class="n">${money(stake * c.odds)} €</b></span>
+        <span>Le book garde<b class="n bad">${p1(keep)} %${c.fair ? " ≈" : ""}</b></span>
+        <span>En moyenne<b class="n bad">${money(stake * c.back)} €</b></span>
       </div>
-      <button type="button" class="load" data-load="${esc(sig)}" aria-pressed="${loadedProp === sig}">${loadedProp === sig ? "Sur le ticket" : "Charger sur le ticket"}</button>
+      <button type="button" class="load" data-load="${esc(sig)}" aria-pressed="${loadedProp === sig}">${loadedProp === sig ? "Sur le ticket" : "Mettre sur le ticket"}</button>
     </article>`;
   }).join("");
 }
@@ -669,16 +911,16 @@ function renderProps() {
 /* ---------------- funnel ---------------- */
 function renderFunnel() {
   const svg = document.getElementById("funnel-svg");
-  const legs = [...picks.entries()];
-  const W = 360, X0 = 118, FW = W - X0 - 6, CX = X0 + FW / 2, BH = 34, GAP = 8, TOP = 4;
+  const legs = [...picks.entries()].sort((a, b) => byId(a[0]).date.localeCompare(byId(b[0]).date));
+  const W = 360, X0 = 118, FW = W - X0 - 6, CX = X0 + FW / 2, BH = 30, GAP = 7, TOP = 4;
   const H = TOP + (legs.length + 1) * (BH + GAP);
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   let cq = 1, cm = 1, co = 1;
   const steps = [{ name: "Départ", sub: "", cq, cm, co, cls: "" }];
   for (const [id, o] of legs) {
     const m = byId(id);
-    cq *= m.market[o]; cm *= m.model[o]; co /= m.odds[o];
-    steps.push({ name: legName(m, o), sub: `${OUT[o].short} · @${m.odds[o].toFixed(2)}`, cq, cm, co, cls: OUT[o].cls });
+    cq *= legQ(m, o); cm *= m.model[o]; co /= legOdds(m, o);
+    steps.push({ name: legName(m, o), sub: `${frDate(m.date)} · ${OUT[o].short} · ${m.odds ? "@" : "≈"}${legOdds(m, o).toFixed(2)}`, cq, cm, co, cls: OUT[o].cls });
   }
   const fill = { H: "var(--h-soft)", D: "var(--d-soft)", A: "var(--a-soft)", "": "var(--panel-2)" };
   const strokeOf = { H: "var(--h)", D: "var(--d)", A: "var(--a)", "": "var(--line)" };
@@ -687,165 +929,264 @@ function renderFunnel() {
     const wq = Math.max(2, FW * s.cq), wm = Math.max(2, FW * s.cm), wo = Math.max(2, FW * s.co);
     const inside = wq > 62;
     return `
-      <text x="${X0 - 10}" y="${y + 14}" text-anchor="end" font-size="11" font-weight="600" fill="var(--ink)" font-family="Familjen Grotesk, sans-serif">${esc(s.name.length > 17 ? s.name.slice(0, 16) + "…" : s.name)}</text>
-      <text x="${X0 - 10}" y="${y + 27}" text-anchor="end" font-size="9.5" fill="var(--ink-3)">${esc(s.sub)}</text>
+      <text x="${X0 - 10}" y="${y + 12}" text-anchor="end" font-size="10.5" font-weight="600" fill="var(--ink)" font-family="Familjen Grotesk, sans-serif">${esc(s.name.length > 17 ? s.name.slice(0, 16) + "…" : s.name)}</text>
+      <text x="${X0 - 10}" y="${y + 24}" text-anchor="end" font-size="9" fill="var(--ink-3)">${esc(s.sub)}</text>
       <rect x="${CX - wq / 2}" y="${y}" width="${wq}" height="${BH}" fill="${fill[s.cls]}" stroke="${strokeOf[s.cls]}" />
       <rect x="${CX - wm / 2}" y="${y + 5}" width="${wm}" height="${BH - 10}" fill="none" stroke="var(--ink)" stroke-width="1.5" />
-      ${i ? `<line x1="${CX - wo / 2}" y1="${y - 2}" x2="${CX - wo / 2}" y2="${y + BH + 2}" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2" />
-             <line x1="${CX + wo / 2}" y1="${y - 2}" x2="${CX + wo / 2}" y2="${y + BH + 2}" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2" />` : ""}
-      <text x="${inside ? CX : CX + wq / 2 + 6}" y="${y + BH / 2 + 4}" text-anchor="${inside ? "middle" : "start"}" font-size="11.5" font-weight="700" fill="var(--ink)" style="paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round">${p1(s.cq)} %</text>`;
+      ${i ? `<line x1="${CX - wo / 2}" y1="${y - 2}" x2="${CX - wo / 2}" y2="${y + BH + 2}" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2" /><line x1="${CX + wo / 2}" y1="${y - 2}" x2="${CX + wo / 2}" y2="${y + BH + 2}" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2" />` : ""}
+      <text x="${inside ? CX : CX + wq / 2 + 6}" y="${y + BH / 2 + 4}" text-anchor="${inside ? "middle" : "start"}" font-size="11" font-weight="700" fill="var(--ink)" style="paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round">${s2(s.cq)}</text>`;
   }).join("");
-  document.getElementById("funnel-sum").textContent = legs.length
-    ? `${legs.length} sélection${legs.length > 1 ? "s" : ""} · reste ${p1(cq)} %`
-    : "Ajoute une sélection";
+  document.getElementById("funnel-sum").textContent = legs.length ? `reste ${s2(cq)}` : "";
 }
 
 /* ---------------- ticket ---------------- */
 function renderTicket() {
-  const legs = document.getElementById("t-legs"), sums = document.getElementById("t-sums");
+  const legsEl = document.getElementById("t-legs"), sums = document.getElementById("t-sums");
   if (picks.size === 0) {
-    legs.innerHTML = `<p class="tempty">Aucune sélection.<br><br>Choisis une cote sur la journée, ou charge une proposition du combinateur. Le ticket imprimera la probabilité réelle, <b>ce que le bookmaker garde</b> et ce que tu récupères en moyenne.</p>`;
-    sums.innerHTML = "";
-    return;
+    legsEl.innerHTML = `<p class="tempty">Aucune sélection.<br>Clique sur une cote, ou mets une proposition sur le ticket.</p>`;
+    sums.innerHTML = ""; document.getElementById("t-hand").innerHTML = ""; document.getElementById("minibar").hidden = true; writeHash(); return;
   }
-  let pm = 1, pq = 1, odds = 1;
+  const legs = [...picks.entries()].sort((a, b) => byId(a[0]).date.localeCompare(byId(b[0]).date));
+  let pm = 1, pq = 1, odds = 1, fair = 0;
   const rows = [];
-  picks.forEach((out, id) => {
+  for (const [id, out] of legs) {
     const m = byId(id);
-    pm *= m.model[out]; pq *= m.market[out]; odds *= m.odds[out];
+    pm *= m.model[out]; pq *= legQ(m, out); odds *= legOdds(m, out); if (!m.odds) fair += 1;
     const b = binOf(m.model[out]);
     rows.push(`<div class="tleg">
       <div class="l1"><span>${esc(m.home.toUpperCase())} – ${esc(m.away.toUpperCase())}</span>
-        <span>@${m.odds[out].toFixed(2)}<button type="button" class="kill" data-k="${m.id}" aria-label="Retirer ${esc(m.home)} – ${esc(m.away)}">×</button></span></div>
-      <div class="l2"><span>${esc(OUT[out].name)}</span><span>nous ${p1(m.model[out])} · marché ${p1(m.market[out])}</span></div>
-      <div class="l3">${b.n ? `Sur ${b.n} annonces à ${b.label} %, c'est arrivé ${p1(b.observed)} % du temps.` : `Aucune annonce mesurée dans la tranche ${b.label} %.`}</div>
+        <span>${m.odds ? "@" : "≈"}${legOdds(m, out).toFixed(2)}<button type="button" class="kill" data-k="${m.id}" aria-label="Retirer">×</button></span></div>
+      <div class="l2"><span>${frDate(m.date)} ${timeLocal(m)} · ${esc(OUT[out].name)}</span><span>nous ${p0(m.model[out])}${m.odds ? ` · marché ${p0(m.market[out])}` : ""} %</span></div>
+      <div class="l3">${b.n ? `À ${b.label} % annoncé, arrivé ${p0(b.observed)} % (${b.n} cas).` : ""}</div>
     </div>`);
-  });
-  legs.innerHTML = rows.join("");
-
-  const backQ = pq * odds, backM = pm * odds, keep = 1 - backQ, edge = backM - 1;
-  let stamp, text;
-  if (edge > 0.02) {
-    stamp = "Écart suspect";
-    text = `Ce modèle prétend un avantage de <b>${p1(edge)} %</b> là où le marché voit une perte de ${p1(keep)} %. Un écart de cette taille n'est pas une opportunité, c'est un drapeau rouge : ce modèle est mesuré <b>${GAP_TXT}</b>, donc quand ils divergent autant, c'est presque toujours lui qui se trompe.`;
-  } else if (edge > 0) {
-    stamp = "Trop serré pour trancher";
-    text = `Les deux estimations sont proches de l'équilibre, et l'écart est trop petit pour être distingué du bruit sur un modèle mesuré ${GAP_TXT}.`;
-  } else {
-    stamp = `Perte attendue ${money(STAKE * keep)} €`;
-    text = `Les deux estimations disent que tu perds. La plus crédible est celle du marché : ce modèle est mesuré moins bon que lui, ${GAP_TXT}. ${picks.size > 1 ? `Et tes ${picks.size} sélections font que le bookmaker garde <b>${p1(keep)} %</b> au lieu de la marge d'un seul match.` : ""}`;
   }
+  legsEl.innerHTML = rows.join("");
+  const backQ = pq * odds, backM = pm * odds, keep = Math.max(0, 1 - backQ), edge = backM - 1;
+  let stamp, text;
+  if (fair === legs.length) { stamp = "Cotes à venir"; text = `Prix justes, sans marge. Le ticket se mettra à jour quand les cotes sortiront.`; }
+  else if (edge > 0.02) { stamp = "Écart suspect"; text = `Nous voyons ${p1(edge)} % d'avantage, le marché non. Quand nous divergeons, c'est nous qui avons tort.`; }
+  else if (edge > 0) { stamp = "Trop serré"; text = `L'écart entre nous et le marché est du bruit.`; }
+  else { stamp = `Perte attendue ${money(stake * keep)} €`; text = legs.length > 1 ? `${legs.length} sélections : le bookmaker garde ${p1(keep)} % au lieu de la marge d'un seul match.` : `La marge du bookmaker, ni plus ni moins.`; }
+  const nDays = new Set(legs.map(([id]) => byId(id).date)).size;
   sums.innerHTML = `
     <div class="tsec">
-      <div class="trow"><span>Sélections</span><b>${picks.size}</b></div>
+      <div class="trow"><span>Sélections · journées</span><b>${legs.length} · ${nDays}</b></div>
       <div class="trow"><span>Cote combinée</span><b>${odds.toFixed(2)}</b></div>
-      <div class="trow"><span>Ça tombe, selon nous</span><b>${p1(pm)} %</b></div>
-      <div class="trow"><span>Ça tombe, selon le marché</span><b>${p1(pq)} %</b></div>
-      <div class="trow"><span>Ce que le bookmaker garde</span><b class="loss">${p1(keep)} %</b></div>
+      <div class="trow"><span>Ça passe, marché</span><b>${s2(pq)}</b></div>
+      <div class="trow"><span>Ça passe, nous</span><b>${s2(pm)}</b></div>
+      <div class="trow"><span>Le book garde${fair && fair < legs.length ? " (≈ partiel)" : ""}</span><b class="loss">${p1(keep)} %</b></div>
     </div>
     <div class="tsec">
-      <div class="trow"><span>Mise</span><b>${money(STAKE)} €</b></div>
-      <div class="trow"><span>Si ça passe</span><b>${money(STAKE * odds)} €</b></div>
-      <div class="trow hero"><span>Tu récupères en moyenne</span><b class="${backQ >= 1 ? "" : "loss"}">${money(STAKE * backQ)} €</b></div>
-      <div class="trow"><span>… si c'est nous qui avons raison</span><b>${money(STAKE * backM)} €</b></div>
+      <div class="trow"><span>Mise</span><b>${money(stake)} €</b></div>
+      <div class="trow"><span>Si ça passe</span><b>${money(stake * odds)} €</b></div>
+      <div class="trow"><span>Gain net si ça passe</span><b>+${money(stake * odds - stake)} €</b></div>
+      <div class="trow hero"><span>En moyenne, tu récupères</span><b class="${backQ >= 1 ? "" : "loss"}">${money(stake * backQ)} €</b></div>
+      <div class="trow"><span>… si nous avons raison</span><b>${money(stake * backM)} €</b></div>
     </div>
-    <div class="stampbox">
-      <span class="stampmark">${esc(stamp)}</span>
-      <p class="stamptext">${text}</p>
-    </div>
-    <div class="tfoot">MODÈLE ${DATA.meta.modelHash.toUpperCase()} · T=${DATA.meta.temperature}</div>`;
+    ${compareBooks(legs)}
+    <div class="stampbox"><span class="stampmark">${esc(stamp)}</span><p class="stamptext">${text}</p></div>`;
+  document.getElementById("t-hand").innerHTML = handoff(legs, odds, pq);
+  writeHash();
+  const bar = document.getElementById("minibar");
+  bar.hidden = false;
+  document.getElementById("mb-legs").textContent = `${legs.length} sélection${legs.length > 1 ? "s" : ""}`;
+  document.getElementById("mb-odds").textContent = `cote ${odds.toFixed(2)}`;
+  document.getElementById("mb-back").innerHTML = `<b class="${backQ >= 1 ? "" : "loss"}">${money(stake * backQ)} €</b> en moyenne`;
 }
 
-/* ---------------- retro, bins, text ---------------- */
-function renderRetro() {
-  const rows = DATA.retro, n = rows.length;
-  const sub = document.getElementById("retro-sub"), quad = document.getElementById("retro-quad");
-  const scroll = document.getElementById("retro-scroll"), note = document.getElementById("retro-note");
-  if (!n) {
-    sub.innerHTML = `Aucune prédiction publiée n'a encore été jouée. Dès qu'une le sera, elle apparaîtra ici avec son résultat, <b>bonne ou mauvaise</b>. Une interface qui ne montre que ses bons jours ne mérite aucune confiance.`;
-    quad.hidden = true; scroll.hidden = true; note.hidden = true;
-    return;
-  }
-  quad.hidden = false; scroll.hidden = false; note.hidden = false;
-  const dates = [...new Set(rows.map((r) => r.date))];
-  sub.innerHTML = `${n} prédiction${n > 1 ? "s" : ""} publiée${n > 1 ? "s" : ""} puis jouée${n > 1 ? "s" : ""}, du ${frDate(dates[dates.length - 1])} au ${frDate(dates[0])}. Ce que le modèle annonçait avant le coup d'envoi, et ce qui est arrivé, <b>bons et mauvais jours confondus</b>.`;
-  let llm = 0, llq = 0, hm = 0, hq = 0, nq = 0;
-  const argmax = (a) => a.indexOf(Math.max(...a));
-  document.getElementById("retro-rows").innerHTML = rows.map((r) => {
-    const k = ["H", "D", "A"].indexOf(r.result);
-    llm += -Math.log(r.model[k]);
-    const om = argmax(r.model) === k;
-    if (om) hm += 1;
-    let oq = null;
-    if (r.market) { llq += -Math.log(r.market[k]); nq += 1; oq = argmax(r.market) === k; if (oq) hq += 1; }
-    const trio = (p) => p ? p.map((x) => p0(x)).join(" / ") : "–";
-    return `<tr><td>${frDate(r.date)}</td><td>${esc(r.home)} – ${esc(r.away)}</td><td class="n">${esc(r.score)}</td>
-      <td class="n">${trio(r.model)}</td><td class="n">${trio(r.market)}</td>
-      <td class="${om ? "yes" : "no"}">${om ? "oui" : "non"}</td><td class="${oq === null ? "" : (oq ? "yes" : "no")}">${oq === null ? "–" : (oq ? "oui" : "non")}</td></tr>`;
-  }).join("");
-  quad.innerHTML = `
-    <div><b class="n">${(llm / n).toFixed(4)}</b><span>Notre log-loss sur ces ${n} match${n > 1 ? "s" : ""}</span></div>
-    <div><b class="n">${nq ? (llq / nq).toFixed(4) : "–"}</b><span>Celui du marché de clôture, ${nq === n ? "mêmes matchs" : `${nq} matchs avec cote`}</span></div>
-    <div><b class="n">${hm} / ${n}</b><span>Nos favoris qui sont sortis</span></div>
-    <div><b class="n">${nq ? `${hq} / ${nq}` : "–"}</b><span>Ceux du marché</span></div>`;
-  const se = (0.55 / Math.sqrt(n)).toFixed(2);
-  note.innerHTML = `Sur ${n} match${n > 1 ? "s" : ""}, l'erreur type d'un log-loss vaut environ <b>${se.replace(".", ",")}</b>. ${n < 200 ? "Quelques journées ne disent rien, ni en bien ni en mal." : ""} Ce qui dit quelque chose, c'est le bilan en walk-forward : ${GAP_TXT}, toujours du même signe.`;
+/* What each bookmaker would keep on this very ticket, priced legs only. */
+function compareBooks(legs) {
+  const priced = legs.filter(([id]) => byId(id).odds);
+  if (!priced.length) return "";
+  const rows = BOOKS.filter((b) => b.key !== "AVG").map((b) => {
+    let back = 1;
+    for (const [id, o] of priced) { const m = byId(id); back *= legQ(m, o) * bookOdds(m, b.key)[o]; }
+    return { key: b.key, name: b.name, keep: 1 - back };
+  }).sort((a, b) => a.keep - b.keep);
+  const best = rows[0], mine = rows.find((r) => r.key === book);
+  return `<div class="tsec compare">
+    <div class="trow"><span>Le moins cher sur ce ticket</span><b>${esc(best.name)} · ${p1(best.keep)} %</b></div>
+    ${mine && mine.key !== best.key ? `<div class="trow"><span>${esc(mine.name)}</span><b class="loss">${p1(mine.keep)} % · +${money(stake * (mine.keep - best.keep))} €</b></div>` : ""}
+  </div>`;
 }
+function ticketText(legs, odds) {
+  const b = bookOf(book);
+  const lines = legs.map(([id, o]) => { const m = byId(id); return `${frDate(m.date)} ${timeLocal(m)}  ${m.home} – ${m.away}  →  ${OUT[o].name} (${OUT[o].short})  @${legOdds(m, o).toFixed(2)}${m.odds ? "" : " (prix juste)"}`; });
+  return [`Baromètre 1X2 · ticket du ${DATA.meta.today}`, `Cotes : ${b.name}`, "", ...lines, "", `Mise ${money(stake)} €  ·  cote ${odds.toFixed(2)}  ·  si ça passe ${money(stake * odds)} €`].join("\n");
+}
+function handoff(legs, odds, pq) {
+  const b = bookOf(book);
+  const go = b.url
+    ? `<a class="go" href="${b.url}" target="_blank" rel="noopener">Ouvrir chez ${esc(b.name)} ↗</a>`
+    : `<span class="go off">Choisis un bookmaker ci-dessus pour ouvrir son site</span>`;
+  return `<div class="hand">
+    ${go}
+    <div class="handrow three">
+      <button type="button" class="hbtn" data-copy>Copier le ticket</button>
+      <button type="button" class="hbtn" data-share>Copier le lien</button>
+      <label class="got"><span>Cote obtenue</span><input type="number" id="got" min="1.01" step="0.01" value="${odds.toFixed(2)}" inputmode="decimal" aria-label="Cote réellement obtenue chez le bookmaker"></label>
+    </div>
+    <button type="button" class="hbtn primary" data-bet>J'ai misé ${money(stake)} €</button>
+    <p class="handnote">Le pari se place sur le site du bookmaker, à son prix du moment : reporte-le dans « cote obtenue ». « J'ai misé » l'ajoute à ton carnet.</p>
+  </div>`;
+}
+/* The ticket lives in the address: send the link, the other side sees the same ticket. */
+function writeHash() {
+  try {
+    const t = [...picks.entries()].map(([id, o]) => `${id}:${o}`).join(",");
+    const h = t ? `#t=${t};s=${stake};b=${book}` : "";
+    history.replaceState(null, "", h || location.pathname + location.search);
+  } catch (e) { /* sandboxed: no address bar */ }
+}
+function readHash() {
+  const raw = (location.hash || "").replace(/^#/, "");
+  if (!raw.startsWith("t=")) return false;
+  const parts = Object.fromEntries(raw.split(";").map((kv) => kv.split("=")));
+  let any = false;
+  for (const leg of (parts.t || "").split(",")) {
+    const [id, o] = leg.split(":");
+    const m = byId(id);
+    if (m && stateOf(m) === "open" && ["0", "1", "2"].includes(o)) { picks.set(id, Number(o)); any = true; }
+  }
+  if (parts.s && Number(parts.s) >= 1) stake = Number(parts.s);
+  if (parts.b && BOOKS.some((b) => b.key === parts.b)) book = parts.b;
+  return any;
+}
+function recordBet() {
+  const legs = [...picks.entries()].sort((a, b) => byId(a[0]).date.localeCompare(byId(b[0]).date));
+  if (!legs.length) return;
+  let pq = 1, odds = 1;
+  const rows = legs.map(([id, o]) => { const m = byId(id); pq *= legQ(m, o); odds *= legOdds(m, o); return { home: m.home, away: m.away, date: m.date, time: timeLocal(m), pick: OUT[o].short, odds: legOdds(m, o), fair: !m.odds }; });
+  const gotEl = document.getElementById("got"), got = gotEl && Number(gotEl.value) >= 1.01 ? Number(gotEl.value) : odds;
+  carnet.unshift({ id: Date.now(), at: DATA.meta.today, book, stake, odds: got, ours: odds, pq, legs: rows });
+  saveCarnet(); renderCarnet();
+}
+/* A bet settles itself once the app has the results: every leg won, or one lost. */
+function settle(bet) {
+  const legs = bet.legs.map((l) => {
+    const m = DATA.upcoming.find((x) => x.date === l.date && x.home === l.home && x.away === l.away);
+    const res = m && m.result ? OUT.find((o) => o.key === m.result).short : null;
+    return { ...l, status: res === null ? "open" : (res === l.pick ? "won" : "lost"), score: m && m.score };
+  });
+  const status = legs.some((l) => l.status === "lost") ? "lost" : legs.every((l) => l.status === "won") ? "won" : "open";
+  return { legs, status, payout: status === "won" ? bet.stake * bet.odds : status === "lost" ? 0 : null };
+}
+function renderCarnet() {
+  const el = document.getElementById("carnet"), sub = document.getElementById("carnet-sub");
+  if (!carnet.length) { sub.textContent = ""; el.innerHTML = `<p class="cempty">Aucun pari enregistré. Après avoir misé chez ton bookmaker, clique « J'ai misé ».</p>`; return; }
+  const settled = carnet.map((c) => ({ c, s: settle(c) }));
+  const staked = carnet.reduce((a, b) => a + b.stake, 0), expected = carnet.reduce((a, b) => a + b.stake * b.pq * b.odds, 0), ifAll = carnet.reduce((a, b) => a + b.stake * b.odds, 0);
+  const done = settled.filter((x) => x.s.status !== "open");
+  const realised = done.reduce((a, x) => a + x.s.payout, 0), stakedDone = done.reduce((a, x) => a + x.c.stake, 0);
+  const LABEL = { open: "en cours", won: "gagné", lost: "perdu" };
+  sub.textContent = `${carnet.length} pari${carnet.length > 1 ? "s" : ""} · ${money(staked)} € misés`;
+  el.innerHTML = `
+    <div class="ctot">
+      <div><i>Misé</i><b class="n">${money(staked)} €</b></div>
+      <div><i>Attendu</i><b class="n loss">${money(expected)} €</b></div>
+      <div><i>Si tout passe</i><b class="n">${money(ifAll)} €</b></div>
+      <div><i>Réalisé</i><b class="n ${done.length && realised < stakedDone ? "loss" : ""}">${done.length ? `${money(realised)} € / ${money(stakedDone)} €` : "–"}</b></div>
+    </div>
+    ${settled.map(({ c, s: st }) => `<div class="cbet ${st.status}">
+      <div class="cb1"><span>${frDate(c.at)} · ${esc(bookOf(c.book) ? bookOf(c.book).name : c.book)} · ${c.legs.length} sélection${c.legs.length > 1 ? "s" : ""}</span><span class="n">${money(c.stake)} € @${c.odds.toFixed(2)}${c.ours && Math.abs(c.ours - c.odds) > 0.005 ? ` <small>(nous ${c.ours.toFixed(2)})</small>` : ""}</span></div>
+      <div class="cb2">${st.legs.map((l) => `<span class="${l.status}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.status === "won" ? " ✓" : l.status === "lost" ? " ✗" : ""}</span>`).join("")}</div>
+      <div class="cb3"><span>${st.status === "open" ? `si ça passe ${money(c.stake * c.odds)} € · attendu ${money(c.stake * c.pq * c.odds)} €` : `réalisé ${money(st.payout)} € · attendu ${money(c.stake * c.pq * c.odds)} €`}</span><span class="status ${st.status}">${LABEL[st.status]}</span><button type="button" class="kill" data-del="${c.id}" aria-label="Supprimer ce pari">×</button></div>
+    </div>`).join("")}
+    ${done.length ? "" : `<p class="cempty">${esc(DATA.meta.resultsNote)}</p>`}`;
+}
+function renderBook() {
+  const b = bookOf(book);
+  document.getElementById("oddsrc").innerHTML = `<span><b>Cotes : ${esc(b.name)}</b>${DATA.meta.oddsCapturedAt ? ` · relevées le ${esc(DATA.meta.oddsCapturedAt)}` : " · aucune cote capturée encore"}${b.margin ? ` · marge moyenne ${p1(b.margin)} %` : ""}</span><span class="label">photo du flux à la publication, pas un direct</span>`;
+  const sel = document.getElementById("book");
+  sel.innerHTML = BOOKS.map((b) => `<option value="${b.key}" ${b.key === book ? "selected" : ""}>${esc(b.name)}</option>`).join("");
+  document.getElementById("book-hint").textContent = book === "AVG" ? "référence, pas un bookmaker" : "ses prix partout sur la page";
+}
+
+/* ---------------- proof ---------------- */
 function renderBins() {
   const s = DATA.standing;
-  document.getElementById("bins-caption").textContent = `Mesuré sur ${s.bins_season}, une saison jamais vue à l'entraînement ni à la calibration : la lire là décrirait le réglage, pas le modèle.`;
   document.getElementById("bin-rows").innerHTML = DATA.bins.map((b) => {
     if (!b.n) return `<tr><td>${b.label} %</td><td class="n">0</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>`;
     const gap = 100 * (b.predicted - b.observed);
-    return `<tr><td>${b.label} %</td><td class="n">${b.n}</td><td class="n">${p1(b.predicted)} %</td><td class="n">${p1(b.observed)} %</td>
-      <td class="n ${Math.abs(gap) > 2 ? "no" : ""}">${gap > 0 ? "+" : ""}${gap.toFixed(2)}</td></tr>`;
+    return `<tr><td>${b.label} %</td><td class="n">${b.n}</td><td class="n">${p1(b.predicted)} %</td><td class="n">${p1(b.observed)} %</td><td class="n ${Math.abs(gap) > 2 ? "no" : ""}">${gap > 0 ? "+" : ""}${gap.toFixed(2)}</td></tr>`;
   }).join("");
-  document.getElementById("seasons-quad").innerHTML = s.seasons.map((r) => `
-    <div><b class="n">${r.model.toFixed(4)} <small style="font-size:12px;color:var(--ink-3)">vs ${r.market.toFixed(4)}</small></b><span>${esc(r.season)} · nous vs marché · écart ${r.gap > 0 ? "+" : ""}${r.gap.toFixed(4)}</span></div>`).join("");
-}
-function renderText() {
-  document.getElementById("wont").innerHTML = `Il ne classera pas les matchs par « confiance » et n'a pas de bouton pour miser. Ce modèle perd contre le marché de clôture ${GAP_TXT}, de façon mesurée et constante : il n'a aucun avantage à te vendre. Le combinateur cherche parmi les combinaisons possibles celle qui répond le mieux à ton objectif, et il te dit toujours ce qu'elle perd en moyenne. Quand le modèle s'écarte fortement du marché, le plus probable est qu'il se trompe, et le ticket te le dit à ce moment-là plutôt que de le taire.`;
+  document.getElementById("seasons-quad").innerHTML = s.seasons.map((r) => `<div><b class="n">${r.model.toFixed(3)} <small style="font-size:12px;color:var(--ink-3)">vs ${r.market.toFixed(3)}</small></b><span>${esc(r.season)} · nous vs marché</span></div>`).join("");
+  document.getElementById("wont").textContent = `Le modèle est mesuré derrière le marché de clôture sur ${N_SEASONS} saisons, toujours du même signe. Il n'a aucun avantage à vendre : le combinateur choisit ce qui perd le moins vite. Features sans fuite temporelle (20 tests), prédictions publiées avant le coup d'envoi dans un registre en ajout seul suivi dans git.`;
 }
 
 /* ---------------- events ---------------- */
 function refocus(sel) { const el = sel && document.querySelector(sel); if (el) el.focus(); }
 function currentSig() { return [...picks.entries()].map(([id, o]) => `${id}:${o}`).sort().join("|"); }
-function syncLoaded() {
-  const sig = currentSig();
-  loadedProp = PRICED.length >= 2 && proposals().some((c) => [...c.sig].sort().join("|") === sig) ? sig : null;
-}
-function rerender() { syncLoaded(); renderRows(); renderFunnel(); renderTicket(); renderProps(); }
+function syncLoaded() { const sig = currentSig(); loadedProp = proposals().some((c) => c.sig.join("|") === sig) ? sig : null; }
+function pruneHidden() { const ids = new Set(pool().map((m) => m.id)); for (const id of [...picks.keys()]) if (!ids.has(id)) picks.delete(id); }
+function rerender() { syncLoaded(); renderFilters(); renderRows(); renderFunnel(); renderTicket(); renderProps(); }
+function setSeg(attr, value) { document.querySelectorAll(`[${attr}]`).forEach((b) => b.setAttribute("aria-pressed", String(b.getAttribute(attr) === String(value)))); }
 
 document.addEventListener("click", (e) => {
-  const opt = e.target.closest("[data-m]");
-  if (opt) {
-    const id = opt.dataset.m, out = Number(opt.dataset.o);
-    picks.get(id) === out ? picks.delete(id) : picks.set(id, out);
-    rerender(); refocus(`[data-m="${id}"][data-o="${out}"]`); return;
-  }
-  const kill = e.target.closest("[data-k]");
+  const t = e.target;
+  const opt = t.closest("[data-m]");
+  if (opt) { const id = opt.dataset.m, o = Number(opt.dataset.o); picks.get(id) === o ? picks.delete(id) : picks.set(id, o); rerender(); refocus(`[data-m="${id}"][data-o="${o}"]`); return; }
+  const kill = t.closest("[data-k]");
   if (kill) { picks.delete(kill.dataset.k); rerender(); return; }
-  const more = e.target.closest("[data-d]");
+  const more = t.closest("[data-d]");
   if (more) { const id = more.dataset.d; open.has(id) ? open.delete(id) : open.add(id); renderRows(); refocus(`[data-d="${id}"]`); return; }
-  const load = e.target.closest("[data-load]");
+  const g = t.closest("[data-g]");
+  if (g) { const k = g.dataset.g; collapsed.has(k) ? collapsed.delete(k) : collapsed.add(k); renderRows(); refocus(`[data-g="${k}"]`); return; }
+  const load = t.closest("[data-load]");
   if (load) {
     picks.clear();
-    for (const s of load.dataset.load.split("|")) { const [id, o] = s.split(":"); picks.set(id, Number(o)); }
+    for (const s of load.dataset.load.split("|")) { const [id, o] = s.split(":"); picks.set(id, Number(o)); collapsed.delete(view === "day" ? byId(id).date : byId(id).league); }
     rerender(); refocus(`[data-load="${load.dataset.load}"]`); return;
   }
-  const ob = e.target.closest("[data-obj]");
-  if (ob) { objective = ob.dataset.obj; document.querySelectorAll("[data-obj]").forEach((b) => b.setAttribute("aria-pressed", String(b === ob))); syncLoaded(); renderProps(); return; }
-  const nl = e.target.closest("[data-n]");
-  if (nl) { nLegs = Number(nl.dataset.n); document.querySelectorAll("[data-n]").forEach((b) => b.setAttribute("aria-pressed", String(b === nl))); syncLoaded(); renderProps(); }
+  const ob = t.closest("[data-obj]");
+  if (ob) { objective = ob.dataset.obj; setSeg("data-obj", objective); syncLoaded(); renderProps(); return; }
+  const nl = t.closest("[data-n]");
+  if (nl) { nLegs = Number(nl.dataset.n); setSeg("data-n", nLegs); syncLoaded(); renderProps(); return; }
+  const v = t.closest("[data-v]");
+  if (v) { view = v.dataset.v; setSeg("data-v", view); collapsed.clear(); collapsedInit = false; renderRows(); return; }
+  const dn = t.closest("[data-dens]");
+  if (dn) { density = dn.dataset.dens; setSeg("data-dens", density); renderRows(); return; }
+  const day = t.closest("[data-day]");
+  if (day) { dayFilter = day.dataset.day; collapsed.clear(); collapsedInit = dayFilter !== "all" && dayFilter !== "week"; pruneHidden(); rerender(); return; }
+  const ch = t.closest("[data-l]");
+  if (ch) { const l = ch.dataset.l; if (leagueOn.has(l) && leagueOn.size > 1) leagueOn.delete(l); else leagueOn.add(l); pruneHidden(); rerender(); return; }
+  if (t.closest("#priced")) { pricedOnly = !pricedOnly; pruneHidden(); rerender(); return; }
+  if (t.closest("[data-copy]")) {
+    const legs = [...picks.entries()].sort((a, b) => byId(a[0]).date.localeCompare(byId(b[0]).date));
+    let odds = 1; for (const [id, o] of legs) odds *= legOdds(byId(id), o);
+    const txt = ticketText(legs, odds), btn = t.closest("[data-copy]");
+    const done = () => { btn.textContent = "Copié"; setTimeout(() => { btn.textContent = "Copier le ticket"; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => { window.prompt("Copie ce ticket :", txt); });
+    else window.prompt("Copie ce ticket :", txt);
+    return;
+  }
+  if (t.closest("[data-share]")) {
+    const btn = t.closest("[data-share]"), url = location.href;
+    const done = () => { btn.textContent = "Lien copié"; setTimeout(() => { btn.textContent = "Copier le lien"; }, 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt("Copie ce lien :", url));
+    else window.prompt("Copie ce lien :", url);
+    return;
+  }
+  if (t.closest("[data-bet]")) { recordBet(); const b = t.closest("[data-bet]"); b.textContent = "Ajouté au carnet"; setTimeout(() => renderTicket(), 1200); return; }
+  const del = t.closest("[data-del]");
+  if (del) { carnet = carnet.filter((c) => String(c.id) !== del.dataset.del); saveCarnet(); renderCarnet(); return; }
+  if (t.closest("#mine")) { mineOnly = !mineOnly; collapsed.clear(); collapsedInit = mineOnly; renderFilters(); renderRows(); }
 });
-document.getElementById("target").addEventListener("input", (e) => {
-  target = Number(e.target.value);
-  document.getElementById("target-out").textContent = target.toFixed(1);
-  syncLoaded(); renderProps();
+document.getElementById("search").addEventListener("input", (e) => { search = e.target.value; collapsed.clear(); collapsedInit = search.trim().length > 0; renderFilters(); renderRows(); });
+document.getElementById("book").addEventListener("change", (e) => {
+  book = e.target.value; try { localStorage.setItem("barometre.book", book); } catch (err) { /* ignore */ }
+  pricedOnly = book !== "AVG"; pruneHidden();
+  renderBook(); rerender();
+  document.querySelectorAll(".pick b, .lo, .prop-odds").forEach((el) => { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 900); });
 });
+document.getElementById("stake").addEventListener("input", (e) => { if (e.target.value !== "") { setStake(e.target.value); renderTicket(); renderProps(); } });
+document.getElementById("stake").addEventListener("blur", () => { setStake(document.getElementById("stake").value); renderTicket(); renderProps(); });
+document.getElementById("quick").addEventListener("click", (e) => { const b = e.target.closest("[data-s]"); if (b) { setStake(b.dataset.s); renderTicket(); renderProps(); } });
+document.getElementById("target").addEventListener("input", (e) => { target = Number(e.target.value); document.getElementById("target-out").textContent = target.toFixed(1); syncLoaded(); renderProps(); });
 
-renderCert(); renderRetro(); renderBins(); renderText();
-if (PRICED.length >= 2) { const first = proposals()[0]; if (first) for (const [id, o] of first.legs) picks.set(id, o); }
+renderCert(); renderBins(); setStake(stake); renderBook(); renderCarnet();
+if (!readHash()) { const first = proposals()[0]; if (first) for (const [id, o] of first.legs) picks.set(id, o); }
+else { setStake(stake); renderBook(); }
 rerender();
 </script>
 </body>

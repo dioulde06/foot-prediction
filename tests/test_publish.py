@@ -57,21 +57,28 @@ def test_appending_a_new_fixture_grows_the_history() -> None:
     assert history.height == 2
 
 
-def test_a_fixture_already_published_is_never_republished() -> None:
-    """The append-only guarantee: a published row is never rewritten."""
+def test_a_published_row_is_never_rewritten_a_moved_prediction_is_appended() -> None:
+    """The append-only guarantee: a published row is never rewritten. When the
+    prediction moves, a new dated row is added and the first one stands as it
+    was; the latest before kick-off is the one that counts."""
     pub.append(_row(3, p_home=0.5))
     history = pub.append(_row(3, p_home=0.9))
-    assert history.height == 1
-    assert history["p_home"][0] == pytest.approx(0.5), "the first prediction must stand"
-
-
-def test_a_batch_mixing_new_and_already_published_keeps_only_the_new() -> None:
-    pub.append(_row(3))
-    batch = pl.concat([_row(3, p_home=0.9), _row(5, home="E", away="F")])
-    history = pub.append(batch)
     assert history.height == 2
-    assert set(history["date"].to_list()) == {dt.date(2026, 9, 3), dt.date(2026, 9, 5)}
-    assert history.filter(pl.col("date") == dt.date(2026, 9, 3))["p_home"][0] == 0.5
+    assert history["p_home"].to_list() == [pytest.approx(0.5), pytest.approx(0.9)]
+    assert pub.latest(history)["p_home"][0] == pytest.approx(0.9)
+
+
+def test_a_batch_mixing_new_unchanged_and_moved_keeps_the_new_and_the_moved() -> None:
+    pub.append(pl.concat([_row(3), _row(4, home="G", away="H")]))
+    batch = pl.concat(
+        [_row(3, p_home=0.9), _row(4, home="G", away="H"), _row(5, home="E", away="F")]
+    )
+    history = pub.append(batch)
+    assert history.height == 4  # 2 already there + the moved one + the new one
+    assert history.filter(pl.col("date") == dt.date(2026, 9, 4)).height == 1
+    assert pub.latest(history).filter(pl.col("date") == dt.date(2026, 9, 3))["p_home"][
+        0
+    ] == pytest.approx(0.9)
 
 
 def _played() -> pl.DataFrame:
@@ -225,3 +232,81 @@ def test_a_new_fixture_grows_the_odds_history() -> None:
     pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 1, 9, 0))
     odds = pub.append_odds(_fixture_row(6, "C", "D"), dt.datetime(2026, 9, 2, 9, 0))
     assert odds.height == 2
+
+
+# ---------------- republish when the prediction moved ----------------
+
+
+def test_a_changed_prediction_is_appended_as_a_new_row() -> None:
+    pub.append(_row(5, p_home=0.50))
+    history = pub.append(_row(5, p_home=0.55))
+    assert history.height == 2
+    assert history["p_home"].to_list() == [0.50, 0.55]
+
+
+def test_an_unchanged_prediction_is_not_republished_even_days_later() -> None:
+    pub.append(_row(5, p_home=0.50))
+    later = _row(5, p_home=0.50).with_columns(
+        pl.lit(dt.datetime(2026, 9, 4, 12, 0))
+        .cast(pl.Datetime("us"))
+        .alias("published_at")
+    )
+    assert pub.append(later).height == 1
+
+
+def test_latest_keeps_one_row_per_match_the_most_recent() -> None:
+    first = _row(5, p_home=0.50)
+    second = _row(5, p_home=0.55).with_columns(
+        pl.lit(dt.datetime(2026, 9, 4, 12, 0))
+        .cast(pl.Datetime("us"))
+        .alias("published_at")
+    )
+    latest = pub.latest(pl.concat([second, first]))
+    assert latest.height == 1
+    assert latest["p_home"][0] == 0.55
+
+
+# ---------------- odds of every book in the feed ----------------
+
+FEED_BOOKS = (
+    "﻿Div,Date,Time,HomeTeam,AwayTeam,B365H,B365D,B365A,BWH,BWD,BWA,AvgH,AvgD,AvgA\n"
+    "E0,05/09/2026,15:00,Brentford,Everton,2.1,3.4,3.6,2.05,3.5,3.55,2.08,3.42,3.55\n"
+)
+
+
+def test_fetch_fixtures_keeps_every_book_it_knows_and_nulls_the_others(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(pub, "_download", lambda url: FEED_BOOKS.encode())
+    fixtures = pub.fetch_fixtures()
+    assert fixtures["odds_b365_h"][0] == 2.1
+    assert fixtures["odds_bw_a"][0] == 3.55
+    assert fixtures["odds_skb_h"][0] is None
+    assert fixtures["odds_avg_h"][0] == 2.08
+
+
+def test_an_odds_history_from_before_the_books_is_widened_with_nulls() -> None:
+    old = _fixture_row(5)
+    old_schema = {
+        k: v
+        for k, v in pub.ODDS_SCHEMA.items()
+        if not k.startswith("odds_") or "avg" in k
+    }
+    old_history = old.with_columns(
+        pl.lit(dt.datetime(2026, 9, 1, 9, 0))
+        .cast(pl.Datetime("us"))
+        .alias("captured_at")
+    ).select(list(old_schema))
+    old_history.write_parquet(pub.ODDS_PARQUET)
+    odds = pub.append_odds(_fixture_row(6, "C", "D"), dt.datetime(2026, 9, 2, 9, 0))
+    assert odds.height == 2
+    assert list(odds.columns) == list(pub.ODDS_SCHEMA)
+    assert odds["odds_b365_h"][0] is None
+
+
+def test_a_fixture_without_average_odds_is_not_captured() -> None:
+    unpriced = _fixture_row(5).with_columns(
+        pl.lit(None, dtype=pl.Float64).alias("odds_avg_h")
+    )
+    odds = pub.append_odds(unpriced, dt.datetime(2026, 9, 1, 9, 0))
+    assert odds.height == 0

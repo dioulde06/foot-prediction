@@ -93,10 +93,17 @@ class GoalsPrior:
 def player_rates(
     players: pl.DataFrame, prior: GoalsPrior, min_minutes: int = MIN_MINUTES
 ) -> pl.DataFrame:
-    """One row per player: pooled minutes and xG, latest team, shrunk rate."""
+    """One row per player: pooled minutes and xG, current team, shrunk rate.
+
+    A player is listed only if he has played in the most recent season on
+    file: someone who left the five leagues has no row there and must not be
+    shown for last season's club. Before the first matchday the most recent
+    season is the previous one, so everybody still counts.
+    """
+    active = players.filter(pl.col("minutes") > 0)
+    current_season = active["season"].max()
     latest = (
-        players.filter(pl.col("minutes") > 0)
-        .sort("season")
+        active.filter(pl.col("season") == current_season)
         .group_by("player_id")
         .agg(pl.col("team").last(), pl.col("position").last(), pl.col("player").last())
     )
@@ -247,15 +254,17 @@ def scorers_for_fixtures(
 
 
 def append_scorers(rows: pl.DataFrame, published_at: dt.datetime) -> pl.DataFrame:
-    """Freeze the estimate for every fixture not already in the file."""
+    """Freeze the estimate for the given fixtures at this publication."""
     SCORERS_PARQUET.parent.mkdir(parents=True, exist_ok=True)
     rows = rows.with_columns(
         pl.lit(published_at).cast(pl.Datetime("us")).alias("published_at")
     ).select(list(SCORERS_SCHEMA))
-    key = ["date", "home_team", "away_team"]
     if SCORERS_PARQUET.exists():
         history = pl.read_parquet(SCORERS_PARQUET)
-        rows = rows.join(history.select(key).unique(), on=key, how="anti")
+        # One freeze per publication of the match: the caller only passes the
+        # fixtures whose prediction was appended this run.
+        already = history.select("date", "home_team", "away_team", "published_at")
+        rows = rows.join(already.unique(), on=list(already.columns), how="anti")
         if rows.is_empty():
             return history
         combined = pl.concat([history, rows])

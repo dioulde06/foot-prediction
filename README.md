@@ -20,7 +20,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
 | 5 | Validation walk-forward | fait — stable sur 4 saisons ; test d'information : le modèle n'apporte rien au marché |
 | 6 | App de publication et suivi | fait — `make publish` / `make track` |
-| 7 | Site statique | fait — `make site` : combinateur, entonnoir, ticket, buteurs probables et marchés buts |
+| 7 | Site | fait — le mois à venir, combinateur multi-journées, ticket, bookmaker au choix, carnet, buteurs |
 | 8 | Publication automatique | fait — GitHub Actions deux fois par jour, GitHub Pages |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
@@ -85,7 +85,7 @@ uv run jupyter lab notebooks/
 
 ```
 src/
-  data/       fetch.py, merge.py, team_mapping.py
+  data/       fetch.py, merge.py, team_mapping.py, players.py (joueurs), schedule.py (calendrier)
   features/   build.py (build_features), elo.py
   models/     train.py, calibrate.py
   eval/       metrics.py, baselines.py, splits.py, report.py, walk_forward.py
@@ -104,7 +104,8 @@ site/         index.html généré par `make site`, servi tel quel
 reports/
   figures/    figures exportées en PNG
 data/
-  raw/        parquet brut par source ; understat_players.parquet est refait à chaque publication, non suivi
+  raw/        parquet brut par source ; understat_players.parquet et understat_schedule.parquet
+              sont refaits à chaque publication, non suivis
   processed/  dataset joint
 models/       modèle entraîné et métadonnées
 .github/workflows/publish.yml   le robot de publication
@@ -282,13 +283,18 @@ s'arrête et on cherche la fuite temporelle. Ce n'est jamais une bonne nouvelle.
 
 ## Publier et vérifier
 
-`make publish` prédit les matchs à venir depuis le flux de fixtures
-football-data et ajoute les lignes à `predictions/predictions.parquet`. Deux
-propriétés rendent l'exercice honnête, et toutes deux sont mécaniques :
+`make publish` prédit tous les matchs des **35 prochains jours**, lus dans le
+calendrier de la saison Understat (`src/data/schedule.py`, coups d'envoi en
+UTC) complété par le flux de fixtures football-data, et ajoute les lignes à
+`predictions/predictions.parquet`. Deux propriétés rendent l'exercice honnête,
+et toutes deux sont mécaniques :
 
-- **Append-only.** Une ligne publiée n'est jamais modifiée ni supprimée. La
-  réconciliation joint les résultats à la volée et n'écrit rien en retour. Un
-  test le vérifie.
+- **Append-only.** Une ligne publiée n'est jamais modifiée ni supprimée. Quand
+  de nouveaux résultats font bouger la prédiction d'un match (au-delà de
+  0.0001 sur une probabilité), une nouvelle ligne horodatée s'ajoute ; la
+  dernière avant le coup d'envoi est celle qui compte, les précédentes montrent
+  le chemin. La réconciliation joint les résultats à la volée sur cette
+  dernière ligne et n'écrit rien en retour. Des tests le vérifient.
 - **Horodaté par ce qu'on ne contrôle pas.** Chaque ligne porte un
   `published_at` et le sha256 de sa charge, mais surtout le fichier est suivi
   dans git. Un sceptique n'a pas à croire l'horodatage du fichier :
@@ -300,11 +306,21 @@ entraînement/production. Un test compare les features d'un match sans score à
 celles du même match avec un 9-0 : elles sont identiques.
 
 `make publish` capture aussi, dans `predictions/odds.parquet`, l'heure du coup
-d'envoi et les cotes moyennes du flux au moment de la publication. Fichier
-séparé, lui aussi en ajout seul : le schéma du registre des prédictions est
-publié et ne bouge pas, et la première capture gagne, parce que c'est le prix
-qui existait quand la prédiction est sortie. Ce sont des cotes courantes, pas
-de clôture.
+d'envoi et les cotes du flux au moment de la publication : la moyenne du
+marché et six bookmakers (Bet365, Betfair, BetVictor, Bwin, Paddy Power, Sky
+Bet). Fichier séparé, lui aussi en ajout seul : le schéma du registre des
+prédictions est publié et ne bouge pas, et la première capture gagne, parce que
+c'est le prix qui existait quand la prédiction est sortie. Un match que le
+marché n'a pas encore coté n'est pas enregistré vide, il est capturé le jour où
+il a un prix. Ce sont des cotes courantes, pas de clôture.
+
+Les fenêtres glissantes de `build_features` lisent les cinq derniers matchs
+**joués** d'une équipe et donnent à chaque ligne, jouée ou non, la fenêtre
+telle qu'elle était strictement avant sa date. Un match dans trois semaines a
+donc les mêmes features que s'il était demain, calculées avec ce qu'on sait
+aujourd'hui ; les features d'entraînement sont identiques au bit près à
+l'ancienne version, deux tests d'invariance couvrent le cas des matchs
+intercalés.
 
 `make track` mesure la calibration des prédictions publiées une fois leurs
 matchs joués, face au marché.
@@ -312,29 +328,40 @@ matchs joués, face au marché.
 ## Le site
 
 `make site` écrit `site/index.html`, une page unique sans serveur, fonction
-pure de quatre fichiers suivis dans git ou reconstruits depuis des sources
-suivies : le registre des prédictions, les cotes capturées, les matchs joués
-et les prédictions hors échantillon du walk-forward
-(`reports/oos_predictions.parquet`). La page change quand on publie, jamais
-entre-temps. Tout ce qu'elle calcule tourne dans le navigateur :
+pure des fichiers suivis dans git : registre des prédictions (dernière ligne
+par match), cotes capturées, buteurs figés, calendrier, matchs joués, et
+prédictions hors échantillon du walk-forward. Tout ce qu'elle calcule tourne
+dans le navigateur, et la page change quand on publie, jamais entre-temps.
 
-- **Le combinateur** énumère les combinaisons de 2 à 4 sélections parmi les
-  matchs à venir qui ont une cote, et en propose trois selon un objectif :
-  cote cible, marge minimale, ou consensus modèle-marché. Chaque proposition
-  affiche sa probabilité selon le marché et selon nous, ce que le bookmaker
-  garde, et le retour moyen sur 100 €. Des combinaisons, pas des conseils.
-- **L'entonnoir** dessine le rétrécissement de la probabilité combinée à
-  chaque sélection : marché en plein, modèle en contour, prix payé en
-  pointillé.
-- **Le ticket** imprime cote combinée, probabilités, marge composée,
-  espérance, et rappelle pour chaque sélection ce que le modèle a obtenu dans
-  la tranche de probabilité de cette annonce.
-- **La journée**, **ce qui a été joué** (vide tant qu'aucune prédiction
-  publiée n'est jouée), **la preuve tranche par tranche** et l'écart au
-  marché saison par saison viennent tous des parquets.
+- **Trois combinés proposés** sur les matchs filtrés, de 2 à 6 sélections,
+  quatre objectifs (cote cible, marge minimale, consensus modèle-marché, une
+  sélection par journée), chacun avec sa raison en une ligne, sa probabilité
+  selon le marché et selon nous, la marge composée et le retour moyen sur la
+  mise saisie. Des combinaisons, pas des conseils : toutes perdent en moyenne.
+- **Les matchs du mois**, regroupés par jour ou par championnat, repliés avec
+  un résumé (favoris nets, matchs serrés), en vue compacte ou détaillée, avec
+  filtres par jour, championnat, équipe, matchs cotés, mes sélections. Heures
+  dans le fuseau du visiteur, compte à rebours sous 24 h, verrouillage au coup
+  d'envoi, score une fois joué. Un match pas encore coté se joue à notre prix
+  juste (1 ÷ probabilité, sans marge), marqué ≈.
+- **Le ticket** : mise libre, cotes du bookmaker choisi (ou moyenne du marché),
+  entonnoir de la probabilité combinée, marge composée, gains si ça passe,
+  retour moyen, rappel de la tranche de calibration de chaque sélection, et le
+  bookmaker le moins cher sur ce ticket précis. Le ticket vit dans l'adresse
+  de la page : copier le lien, c'est partager le ticket.
+- **Le passage de main** : le pari se place sur le site du bookmaker, jamais
+  ici. Un bouton ouvre son site, un autre copie le ticket ; on reporte la cote
+  réellement obtenue et « J'ai misé » ajoute le pari au **carnet**, gardé dans
+  le navigateur, qui se solde tout seul quand les résultats arrivent : gagné,
+  perdu, et le réalisé face au retour attendu.
+- **La fiche** d'un match : forme et chiffres sur cinq matchs, buteurs
+  probables, marchés buts (voir ci-dessous). Un volet replié « Comment lire »
+  et un volet « La preuve » portent les tranches de calibration et l'écart au
+  marché saison par saison.
 
-Un match publié sans cote capturée est affiché mais ne peut pas entrer dans un
-ticket.
+Aucun bookmaker régulé n'offre d'API de placement de pari, et automatiser un
+compte viole leurs conditions : la plateforme compare et prépare, le pari se
+fait chez eux.
 
 ## La publication automatique
 

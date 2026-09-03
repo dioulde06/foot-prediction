@@ -1,10 +1,11 @@
 """Generate the static site from the committed parquet files.
 
-The page is a pure function of four inputs, all tracked in git or rebuilt
-from tracked sources: the prediction log, the odds captured at publication,
-the played matches, and the walk-forward out-of-sample predictions. Nothing
-is computed at request time: `make site` writes one HTML file and GitHub
-Pages serves it. The page changes when we publish, never in between.
+The page is a pure function of the tracked files: the prediction log, the
+odds captured at publication, the frozen scorers, the season schedule, the
+played matches, and the walk-forward out-of-sample predictions. Nothing is
+computed at request time: `make site` writes one HTML file and GitHub Pages
+serves it. Everything the page computes (combinations, ticket, bet log) runs
+in the browser on that data.
 """
 
 from __future__ import annotations
@@ -14,11 +15,20 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import polars as pl
 
-from src.app.publish import ODDS_PARQUET, ODDS_SCHEMA, PREDICTIONS_PARQUET
+from src.app.publish import (
+    FEED_BOOKS,
+    HORIZON_DAYS,
+    KEY,
+    ODDS_PARQUET,
+    ODDS_SCHEMA,
+    PREDICTIONS_PARQUET,
+    latest,
+)
 from src.app.scorers import (
     MIN_MINUTES,
     PRIOR_MINUTES,
@@ -26,6 +36,7 @@ from src.app.scorers import (
     SCORERS_SCHEMA,
     goal_markets,
 )
+from src.data.schedule import SCHEDULE_PARQUET
 from src.eval.baselines import devig_power
 from src.eval.metrics import (
     BIN_LABELS,
@@ -43,7 +54,27 @@ TEMPLATE = Path("src/app/templates/index.html")
 OOS_PARQUET = Path("reports/oos_predictions.parquet")
 SITE_DIR = Path("site")
 PLACEHOLDER = "__DATA__"
-KEY = ["date", "home_team", "away_team"]
+# Played matches stay on the page this long, so a bet log can settle itself.
+KEEP_PLAYED_DAYS = 10
+# The odds feed quotes UK time; used only when the schedule has no kick-off.
+FEED_TZ = ZoneInfo("Europe/London")
+BOOK_URLS = {
+    "B365": "https://www.bet365.com",
+    "BFD": "https://www.betfair.com",
+    "BV": "https://www.betvictor.com",
+    "BW": "https://www.bwin.com",
+    "PP": "https://www.paddypower.com",
+    "SKB": "https://skybet.com",
+}
+SCHEDULE_SCHEMA: dict[str, pl.DataType] = {
+    "league": pl.String(),
+    "season": pl.String(),
+    "kickoff_utc": pl.Datetime("us"),
+    "date": pl.Date(),
+    "home_team": pl.String(),
+    "away_team": pl.String(),
+    "played": pl.Boolean(),
+}
 
 
 def _probs(frame: pl.DataFrame, prefix: str) -> np.ndarray:
@@ -59,30 +90,15 @@ def _market(odds: list[float | None]) -> tuple[list[float] | None, float | None]
     return [round(float(p), 4) for p in probs], round(float((1 / array).sum() - 1), 4)
 
 
-def _upcoming(joined: pl.DataFrame, today: dt.date) -> list[dict[str, Any]]:
-    rows = joined.filter(pl.col("result").is_null() & (pl.col("date") >= today)).sort(
-        "date", "kickoff_time", "home_team"
-    )
-    out = []
-    for i, r in enumerate(rows.iter_rows(named=True)):
-        odds = [r["odds_avg_h"], r["odds_avg_d"], r["odds_avg_a"]]
-        market, overround = _market(odds)
-        out.append(
-            {
-                "id": f"m{i}",
-                "date": r["date"].isoformat(),
-                "time": r["kickoff_time"] or "",
-                "league": r["league"],
-                "home": r["home_team"],
-                "away": r["away_team"],
-                "model": [round(r[f"p_{k}"], 4) for k in ("home", "draw", "away")],
-                "odds": None if market is None else [float(o) for o in odds],
-                "market": market,
-                "overround": overround,
-                "publishedAt": r["published_at"].strftime("%Y-%m-%d %H:%M"),
-            }
-        )
-    return out
+def _kickoff(row: dict[str, Any]) -> str | None:
+    """UTC kick-off as ISO text: from the schedule, else from the feed's UK time."""
+    if row.get("kickoff_utc") is not None:
+        return str(row["kickoff_utc"].strftime("%Y-%m-%dT%H:%M:00Z"))
+    if row.get("kickoff_time"):
+        hour, minute = (int(x) for x in row["kickoff_time"].split(":"))
+        local = dt.datetime.combine(row["date"], dt.time(hour, minute), tzinfo=FEED_TZ)
+        return local.astimezone(dt.UTC).strftime("%Y-%m-%dT%H:%M:00Z")
+    return None
 
 
 def _form(played: pl.DataFrame, team: str, before: dt.date, n: int = 5) -> list[str]:
@@ -113,6 +129,8 @@ def _cards(
     )
     if rows.is_empty():
         return None
+    # The latest freeze of this match only.
+    rows = rows.filter(pl.col("published_at") == rows["published_at"].max())
     sides: dict[str, Any] = {}
     lam: dict[str, float] = {}
     for side in ("home", "away"):
@@ -151,23 +169,65 @@ def _cards(
     }
 
 
-def _retro(joined: pl.DataFrame) -> list[dict[str, Any]]:
-    rows = joined.filter(pl.col("result").is_not_null()).sort("date", descending=True)
+def _matches(
+    joined: pl.DataFrame, scorers: pl.DataFrame, played: pl.DataFrame, today: dt.date
+) -> list[dict[str, Any]]:
+    rows = joined.filter(
+        (pl.col("date") >= today - dt.timedelta(days=KEEP_PLAYED_DAYS))
+        & (pl.col("date") <= today + dt.timedelta(days=HORIZON_DAYS))
+    ).sort("date", "kickoff_utc", "home_team", nulls_last=True)
     out = []
-    for r in rows.iter_rows(named=True):
-        closing = [r["odds_close_avg_h"], r["odds_close_avg_d"], r["odds_close_avg_a"]]
-        market, _ = _market(closing)
+    for i, r in enumerate(rows.iter_rows(named=True)):
+        avg = [r["odds_avg_h"], r["odds_avg_d"], r["odds_avg_a"]]
+        market, overround = _market(avg)
+        books = None
+        if market is not None:
+            books = {}
+            for code in FEED_BOOKS:
+                prices = [r[f"odds_{code.lower()}_{o}"] for o in "hda"]
+                if all(p is not None for p in prices):
+                    books[code] = [float(p) for p in prices]
+        match = {
+            "id": f"m{i}",
+            "date": r["date"].isoformat(),
+            "kickoff": _kickoff(r),
+            "league": r["league"],
+            "home": r["home_team"],
+            "away": r["away_team"],
+            "model": [round(r[f"p_{k}"], 4) for k in ("home", "draw", "away")],
+            "odds": None if market is None else [float(o) for o in avg],
+            "market": market,
+            "overround": overround,
+            "books": books,
+            "result": r["result"],
+            "score": (
+                f"{r['home_goals']}-{r['away_goals']}"
+                if r["home_goals"] is not None
+                else None
+            ),
+            "publishedAt": r["published_at"].strftime("%Y-%m-%d %H:%M"),
+        }
+        match["cards"] = _cards(match, scorers, played)
+        out.append(match)
+    return out
+
+
+def _books(odds: pl.DataFrame) -> list[dict[str, Any]]:
+    """The books, with the margin each one actually showed on the captured odds."""
+    out: list[dict[str, Any]] = [
+        {"key": "AVG", "name": "Moyenne du marché", "url": None, "margin": None}
+    ]
+    for code, name in FEED_BOOKS.items():
+        cols = [f"odds_{code.lower()}_{o}" for o in "hda"]
+        priced = odds.filter(pl.all_horizontal([pl.col(c).is_not_null() for c in cols]))
+        margin = None
+        if priced.height:
+            inverse = priced.select(
+                [(1 / pl.col(c)).alias(c) for c in cols]
+            ).sum_horizontal()
+            margin = round(float(inverse.to_numpy().mean()) - 1, 4)
         out.append(
-            {
-                "date": r["date"].isoformat(),
-                "league": r["league"],
-                "home": r["home_team"],
-                "away": r["away_team"],
-                "score": f"{r['home_goals']}-{r['away_goals']}",
-                "result": r["result"],
-                "model": [round(r[f"p_{k}"], 4) for k in ("home", "draw", "away")],
-                "market": market,
-            }
+            {"key": code, "name": name, "url": BOOK_URLS[code], "margin": margin}
         )
     return out
 
@@ -222,42 +282,58 @@ def build_data(
     oos: pl.DataFrame,
     today: dt.date,
     scorers: pl.DataFrame | None = None,
+    schedule: pl.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Everything the page needs, as plain JSON-ready values."""
-    if scorers is None:
-        scorers = pl.DataFrame(schema=SCORERS_SCHEMA)
     if predictions.is_empty():
         raise ValueError("no published predictions; run `make publish` first")
-    joined = predictions.join(
-        odds.select(*KEY, "kickoff_time", "odds_avg_h", "odds_avg_d", "odds_avg_a"),
-        on=KEY,
-        how="left",
-    ).join(
-        played.select(
-            *KEY,
-            "home_goals",
-            "away_goals",
-            "result",
-            *[f"odds_close_avg_{o}" for o in "hda"],
-        ),
-        on=KEY,
-        how="left",
+    if scorers is None:
+        scorers = pl.DataFrame(schema=SCORERS_SCHEMA)
+    if schedule is None:
+        schedule = pl.DataFrame(schema=SCHEDULE_SCHEMA)
+    current = latest(predictions)
+    joined = (
+        current.join(
+            odds.drop("league", "captured_at").unique(subset=KEY, keep="first"),
+            on=KEY,
+            how="left",
+        )
+        .join(schedule.select(*KEY, "kickoff_utc"), on=KEY, how="left")
+        .join(
+            played.select(
+                *KEY,
+                "home_goals",
+                "away_goals",
+                "result",
+                *[f"odds_close_avg_{o}" for o in "hda"],
+            ),
+            on=KEY,
+            how="left",
+        )
     )
-    latest = predictions.sort("published_at").row(-1, named=True)
+    newest = predictions.sort("published_at").row(-1, named=True)
     standing, bins = _standing(oos)
-    upcoming = _upcoming(joined, today)
-    for match in upcoming:
-        match["cards"] = _cards(match, scorers, played)
+    captured = odds["captured_at"].max() if odds.height else None
     return {
         "meta": {
-            "publishedAt": latest["published_at"].strftime("%Y-%m-%d %H:%M UTC"),
-            "modelHash": latest["model_hash"],
-            "temperature": round(latest["temperature"], 4),
-            "nPublished": predictions.height,
+            "publishedAt": newest["published_at"].strftime("%Y-%m-%d %H:%M UTC"),
+            "today": today.isoformat(),
+            "modelHash": newest["model_hash"],
+            "temperature": round(newest["temperature"], 4),
+            "nPublished": current.height,
+            "horizonDays": HORIZON_DAYS,
+            "oddsCapturedAt": (
+                captured.strftime("%Y-%m-%d %H:%M UTC")
+                if isinstance(captured, dt.datetime)
+                else None
+            ),
+            "books": _books(odds),
             "scorers": {"minMinutes": MIN_MINUTES, "priorMatches": PRIOR_MINUTES // 90},
+            "resultsNote": (
+                "Les résultats arrivent deux fois par jour, une fois les matchs joués."
+            ),
         },
-        "upcoming": upcoming,
-        "retro": _retro(joined),
+        "upcoming": _matches(joined, scorers, played, today),
         "standing": standing,
         "bins": bins,
     }
@@ -271,36 +347,30 @@ def render(template: str, data: dict[str, Any]) -> str:
     return template.replace(PLACEHOLDER, payload.replace("</", "<\\/"))
 
 
+def _read_or_empty(path: Path, schema: dict[str, pl.DataType]) -> pl.DataFrame:
+    return pl.read_parquet(path) if path.exists() else pl.DataFrame(schema=schema)
+
+
 def main() -> Path:
     logging.basicConfig(
         level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
     )
-    odds = (
-        pl.read_parquet(ODDS_PARQUET)
-        if ODDS_PARQUET.exists()
-        else pl.DataFrame(schema=ODDS_SCHEMA)
-    )
-    scorers = (
-        pl.read_parquet(SCORERS_PARQUET)
-        if SCORERS_PARQUET.exists()
-        else pl.DataFrame(schema=SCORERS_SCHEMA)
-    )
     data = build_data(
         pl.read_parquet(PREDICTIONS_PARQUET),
-        odds,
+        _read_or_empty(ODDS_PARQUET, ODDS_SCHEMA),
         pl.read_parquet(MATCHES_PARQUET),
         pl.read_parquet(OOS_PARQUET),
         dt.datetime.now(dt.UTC).date(),
-        scorers,
+        _read_or_empty(SCORERS_PARQUET, SCORERS_SCHEMA),
+        _read_or_empty(SCHEDULE_PARQUET, SCHEDULE_SCHEMA),
     )
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     out = SITE_DIR / "index.html"
     out.write_text(render(TEMPLATE.read_text(), data))
     LOG.info(
-        "%s ecrit: %d matchs a venir, %d joues, modele %s",
+        "%s ecrit: %d matchs, modele %s",
         out,
         len(data["upcoming"]),
-        len(data["retro"]),
         data["meta"]["modelHash"],
     )
     return out
