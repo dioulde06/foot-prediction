@@ -338,18 +338,22 @@ ticket.
 
 ## La publication automatique
 
+Le site est en ligne : <https://dioulde06.github.io/foot-prediction/>.
+
 Personne ne tape `make publish`. Le workflow `.github/workflows/publish.yml`
 tourne deux fois par jour (7h et 16h UTC, ou à la main depuis l'onglet
 Actions) : il rafraîchit la saison en cours, publie, régénère le site, commite
 ce qui a changé dans `data/`, `predictions/` et `site/` sous l'identité du
-robot, puis déploie `site/` sur GitHub Pages. Chaque passage est idempotent :
+robot, puis déploie `site/` sur GitHub Pages. Le dépôt est public : Pages
+l'exige avec le plan gratuit, et l'antériorité prouvée par git n'a de valeur
+que si n'importe qui peut la vérifier. Chaque passage est idempotent :
 un match déjà publié n'est jamais republié, une cote ou un buteur déjà capturé
 n'est jamais réécrit. Le commit du robot horodate l'antériorité mieux qu'un
 commit fait à la main.
 
 Pour que ça tourne, `data/`, `models/` et `predictions/` sont versionnés : le
 robot ne reconstruit rien, il ne fait que l'incrément du jour. Côté réglages
-du dépôt, GitHub Pages doit avoir « GitHub Actions » comme source.
+du dépôt, GitHub Pages a « GitHub Actions » comme source.
 
 ### La saison glissante
 
