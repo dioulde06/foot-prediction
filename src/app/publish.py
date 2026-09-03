@@ -27,10 +27,12 @@ import lightgbm as lgb
 import numpy as np
 import polars as pl
 
+from src.app.combos import WINDOW_DAYS, Match, freeze_proposals
 from src.app.scorers import GoalsPrior, append_scorers, scorers_for_fixtures
 from src.data.fetch import LEAGUES, _download, season_of
 from src.data.players import fetch_players
 from src.data.schedule import fetch_schedule, upcoming
+from src.eval.baselines import devig_power
 from src.eval.metrics import CLASSES, Probs
 from src.features.build import FEATURE_COLUMNS, build_features
 from src.models.calibrate import TemperatureScaler
@@ -306,7 +308,41 @@ def publish(
         freeze_scorers(
             features.join(appended.select(KEY), on=KEY, how="semi"), published_at
         )
+    freeze_weekly_proposals(published_at)
     return history
+
+
+def freeze_weekly_proposals(published_at: dt.datetime) -> None:
+    """This week's three proposals per objective, from the priced fixtures of the
+    coming seven days, frozen once so the Bilan can judge what was shown."""
+    if not (PREDICTIONS_PARQUET.exists() and ODDS_PARQUET.exists()):
+        return
+    today = published_at.date()
+    current = latest(pl.read_parquet(PREDICTIONS_PARQUET))
+    odds = _conform(pl.read_parquet(ODDS_PARQUET), ODDS_SCHEMA).unique(
+        subset=KEY, keep="first"
+    )
+    frame = current.join(
+        odds.select(*KEY, *[f"odds_avg_{o}" for o in "hda"]), on=KEY, how="inner"
+    ).filter(
+        (pl.col("date") >= today)
+        & (pl.col("date") < today + dt.timedelta(days=WINDOW_DAYS))
+        & pl.all_horizontal([pl.col(f"odds_avg_{o}").is_not_null() for o in "hda"])
+    )
+    pool = []
+    for r in frame.iter_rows(named=True):
+        prices = [r["odds_avg_h"], r["odds_avg_d"], r["odds_avg_a"]]
+        pool.append(
+            Match(
+                date=r["date"],
+                home_team=r["home_team"],
+                away_team=r["away_team"],
+                model=[r["p_home"], r["p_draw"], r["p_away"]],
+                market=devig_power(np.asarray([prices]))[0].tolist(),
+                odds=prices,
+            )
+        )
+    freeze_proposals(pool, published_at)
 
 
 def fixtures_ahead(feed: pl.DataFrame, today: dt.date) -> pl.DataFrame:

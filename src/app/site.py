@@ -20,6 +20,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import polars as pl
 
+from src.app.combos import OBJECTIVES, PROPOSALS_PARQUET, PROPOSALS_SCHEMA
 from src.app.publish import (
     FEED_BOOKS,
     HORIZON_DAYS,
@@ -51,6 +52,10 @@ from src.models.train import MATCHES_PARQUET
 LOG = logging.getLogger(__name__)
 
 TEMPLATE = Path("src/app/templates/index.html")
+BACKTEST_PARQUET = Path("reports/proposals_backtest.parquet")
+# Notional stake per proposal in the track record; the page lets the visitor change it.
+TRACK_STAKE = 10.0
+RESULT_TO_PICK = {"H": "1", "D": "X", "A": "2"}
 OOS_PARQUET = Path("reports/oos_predictions.parquet")
 SITE_DIR = Path("site")
 PLACEHOLDER = "__DATA__"
@@ -275,6 +280,81 @@ def _standing(oos: pl.DataFrame) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     return standing, bins
 
 
+def _track_objectives(rows: pl.DataFrame, played: pl.DataFrame) -> dict[str, Any]:
+    """Proposals grouped by objective and week, each leg settled when it can be.
+
+    A proposal is won when every leg hit, lost as soon as one leg missed, and
+    open otherwise. The page recomputes euros from these at any stake.
+    """
+    if rows.is_empty():
+        return {objective: {"weeks": []} for objective in OBJECTIVES}
+    joined = rows.join(played.select(*KEY, "result"), on=KEY, how="left").sort(
+        "week", "objective", "rank", "leg"
+    )
+    out: dict[str, Any] = {}
+    for objective in OBJECTIVES:
+        weeks = []
+        part = joined.filter(pl.col("objective") == objective)
+        for week in sorted(part["week"].unique().to_list()):
+            bets = []
+            wf = part.filter(pl.col("week") == week)
+            for rank in sorted(wf["rank"].unique().to_list()):
+                legs_frame = wf.filter(pl.col("rank") == rank)
+                legs = []
+                odds = pq = pm = 1.0
+                for r in legs_frame.iter_rows(named=True):
+                    hit = (
+                        None
+                        if r["result"] is None
+                        else RESULT_TO_PICK[r["result"]] == r["pick"]
+                    )
+                    legs.append(
+                        {
+                            "home": r["home_team"],
+                            "away": r["away_team"],
+                            "date": r["date"].isoformat(),
+                            "pick": r["pick"],
+                            "odds": round(r["odds"], 2),
+                            "hit": hit,
+                        }
+                    )
+                    odds *= r["odds"]
+                    pq *= r["p_market"]
+                    pm *= r["p_model"]
+                hits = [leg["hit"] for leg in legs]
+                won = False if False in hits else (True if all(hits) else None)
+                bets.append(
+                    {
+                        "odds": round(odds, 2),
+                        "pq": round(pq, 4),
+                        "pm": round(pm, 4),
+                        "won": won,
+                        "legs": legs,
+                    }
+                )
+            weeks.append({"week": week.isoformat(), "bets": bets})
+        out[objective] = {"weeks": weeks}
+    return out
+
+
+def _track(
+    backtest: pl.DataFrame, live: pl.DataFrame, played: pl.DataFrame
+) -> dict[str, Any]:
+    season = backtest["season"][0] if backtest.height else None
+    since = live["week"].min() if live.height else None
+    return {
+        "stake": TRACK_STAKE,
+        "backtest": {
+            "season": season,
+            "objectives": _track_objectives(backtest, played),
+        },
+        "live": {
+            "since": since.isoformat() if isinstance(since, dt.date) else None,
+            "objectives": _track_objectives(live, played),
+        },
+    }
+
+
 def build_data(
     predictions: pl.DataFrame,
     odds: pl.DataFrame,
@@ -283,6 +363,8 @@ def build_data(
     today: dt.date,
     scorers: pl.DataFrame | None = None,
     schedule: pl.DataFrame | None = None,
+    backtest: pl.DataFrame | None = None,
+    proposals: pl.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Everything the page needs, as plain JSON-ready values."""
     if predictions.is_empty():
@@ -291,6 +373,10 @@ def build_data(
         scorers = pl.DataFrame(schema=SCORERS_SCHEMA)
     if schedule is None:
         schedule = pl.DataFrame(schema=SCHEDULE_SCHEMA)
+    if backtest is None:
+        backtest = pl.DataFrame(schema={**PROPOSALS_SCHEMA, "season": pl.String()})
+    if proposals is None:
+        proposals = pl.DataFrame(schema=PROPOSALS_SCHEMA)
     current = latest(predictions)
     joined = (
         current.join(
@@ -336,6 +422,7 @@ def build_data(
         "upcoming": _matches(joined, scorers, played, today),
         "standing": standing,
         "bins": bins,
+        "track": _track(backtest, proposals, played),
     }
 
 
@@ -363,6 +450,8 @@ def main() -> Path:
         dt.datetime.now(dt.UTC).date(),
         _read_or_empty(SCORERS_PARQUET, SCORERS_SCHEMA),
         _read_or_empty(SCHEDULE_PARQUET, SCHEDULE_SCHEMA),
+        _read_or_empty(BACKTEST_PARQUET, {**PROPOSALS_SCHEMA, "season": pl.String()}),
+        _read_or_empty(PROPOSALS_PARQUET, PROPOSALS_SCHEMA),
     )
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     out = SITE_DIR / "index.html"

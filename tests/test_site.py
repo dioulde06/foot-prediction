@@ -252,3 +252,57 @@ def test_the_page_is_json_serialisable_and_the_placeholder_is_filled() -> None:
     html = site.render("<script>const DATA = __DATA__;</script>", build())
     assert "__DATA__" not in html
     assert json.loads(html.split("const DATA = ")[1].split(";</script>")[0])["upcoming"]
+
+
+def _proposal_rows(week: dt.date, *days: int) -> pl.DataFrame:
+    from src.app.combos import PROPOSALS_SCHEMA
+
+    rows = [
+        {
+            "published_at": dt.datetime(2026, 9, 1, 7, 0),
+            "week": week,
+            "objective": "target",
+            "rank": 1,
+            "leg": i + 1,
+            "date": dt.date(2026, 9, d),
+            "home_team": f"H{d}",
+            "away_team": f"A{d}",
+            "pick": "1",
+            "odds": 2.0,
+            "p_model": 0.5,
+            "p_market": 0.48,
+        }
+        for i, d in enumerate(days)
+    ]
+    return pl.DataFrame(rows, schema=PROPOSALS_SCHEMA)
+
+
+def test_a_frozen_proposal_settles_from_the_played_results() -> None:
+    live = _proposal_rows(dt.date(2026, 8, 31), 1, 5)
+    data = build(played=_played(1), proposals=live)
+    (week,) = data["track"]["live"]["objectives"]["target"]["weeks"]
+    (bet,) = week["bets"]
+    assert bet["odds"] == 4.0 and bet["pq"] == pytest.approx(0.48**2)
+    assert [leg["hit"] for leg in bet["legs"]] == [True, None]
+    assert bet["won"] is None, "one leg still to play: open"
+    assert data["track"]["live"]["since"] == "2026-08-31"
+
+
+def test_a_missed_leg_loses_the_proposal_even_before_the_others_play() -> None:
+    live = _proposal_rows(dt.date(2026, 8, 31), 1, 5).with_columns(
+        pl.when(pl.col("leg") == 1)
+        .then(pl.lit("2"))
+        .otherwise(pl.col("pick"))
+        .alias("pick")
+    )
+    track = build(played=_played(1), proposals=live)["track"]
+    assert track["live"]["objectives"]["target"]["weeks"][0]["bets"][0]["won"] is False
+
+
+def test_the_track_record_is_empty_but_well_formed_without_registries() -> None:
+    track = build()["track"]
+    assert track["stake"] == 10.0
+    assert track["backtest"]["season"] is None
+    assert track["live"]["since"] is None
+    for objective in ("target", "margin", "consensus"):
+        assert track["live"]["objectives"][objective]["weeks"] == []

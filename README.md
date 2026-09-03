@@ -20,7 +20,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
 | 5 | Validation walk-forward | fait — stable sur 4 saisons ; test d'information : le modèle n'apporte rien au marché |
 | 6 | App de publication et suivi | fait — `make publish` / `make track` |
-| 7 | Site | fait — le mois à venir, combinateur multi-journées, ticket, bookmaker au choix, carnet, buteurs |
+| 7 | Site | fait — application à quatre onglets : matchs du mois, propositions, bilan des propositions, méthode |
 | 8 | Publication automatique | fait — GitHub Actions deux fois par jour, GitHub Pages |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
@@ -70,6 +70,7 @@ make eval      # walk-forward + saturation de l'historique
 make information  # le modèle sait-il quelque chose que le marché ignore ?
 make publish   # prédit les matchs à venir, append-only ; capture cotes et buteurs
 make site      # génère site/index.html depuis les parquets suivis dans git
+make proposals-backtest  # rejoue le combinateur sur la dernière saison complète
 make track     # calibration des prédictions publiées, une fois jouées
 
 uv run python scripts/run_baselines.py            # tableau des 3 baselines
@@ -89,7 +90,8 @@ src/
   features/   build.py (build_features), elo.py
   models/     train.py, calibrate.py
   eval/       metrics.py, baselines.py, splits.py, report.py, walk_forward.py
-  app/        publish.py — publication, capture des cotes, buteurs figés, réconciliation
+  app/        publish.py — publication, capture des cotes, buteurs et propositions figés
+              combos.py — le combinateur en Python, même algorithme que la page
               scorers.py — buts attendus par équipe, buteurs probables, marchés buts
               site.py — génération du site statique ; templates/index.html
 configs/      lightgbm.yaml
@@ -100,6 +102,7 @@ notebooks/    analyses exécutées, suivies dans git
 predictions/  predictions.parquet, historique append-only des prédictions publiées
               odds.parquet, cotes capturées à la publication, append-only aussi
               scorers.parquet, buteurs probables et buts attendus figés à la publication
+              proposals.parquet, les trois propositions par objectif, figées chaque semaine
 site/         index.html généré par `make site`, servi tel quel
 reports/
   figures/    figures exportées en PNG
@@ -327,41 +330,62 @@ matchs joués, face au marché.
 
 ## Le site
 
-`make site` écrit `site/index.html`, une page unique sans serveur, fonction
-pure des fichiers suivis dans git : registre des prédictions (dernière ligne
-par match), cotes capturées, buteurs figés, calendrier, matchs joués, et
-prédictions hors échantillon du walk-forward. Tout ce qu'elle calcule tourne
-dans le navigateur, et la page change quand on publie, jamais entre-temps.
+`make site` écrit `site/index.html`, une application d'une page, sans serveur,
+fonction pure des fichiers suivis dans git : registre des prédictions (dernière
+ligne par match), cotes capturées, buteurs figés, propositions figées,
+calendrier, matchs joués, prédictions hors échantillon du walk-forward et
+rejeu du combinateur. Tout ce qu'elle calcule tourne dans le navigateur, et la
+page change quand on publie, jamais entre-temps.
 
-- **Trois combinés proposés** sur les matchs filtrés, de 2 à 6 sélections,
-  quatre objectifs (cote cible, marge minimale, consensus modèle-marché, une
-  sélection par journée), chacun avec sa raison en une ligne, sa probabilité
-  selon le marché et selon nous, la marge composée et le retour moyen sur la
-  mise saisie. Des combinaisons, pas des conseils : toutes perdent en moyenne.
-- **Les matchs du mois**, regroupés par jour ou par championnat, repliés avec
-  un résumé (favoris nets, matchs serrés), en vue compacte ou détaillée, avec
-  filtres par jour, championnat, équipe, matchs cotés, mes sélections. Heures
-  dans le fuseau du visiteur, compte à rebours sous 24 h, verrouillage au coup
-  d'envoi, score une fois joué. Un match pas encore coté se joue à notre prix
-  juste (1 ÷ probabilité, sans marge), marqué ≈.
-- **Le ticket** : mise libre, cotes du bookmaker choisi (ou moyenne du marché),
-  entonnoir de la probabilité combinée, marge composée, gains si ça passe,
-  retour moyen, rappel de la tranche de calibration de chaque sélection, et le
-  bookmaker le moins cher sur ce ticket précis. Le ticket vit dans l'adresse
-  de la page : copier le lien, c'est partager le ticket.
-- **Le passage de main** : le pari se place sur le site du bookmaker, jamais
-  ici. Un bouton ouvre son site, un autre copie le ticket ; on reporte la cote
-  réellement obtenue et « J'ai misé » ajoute le pari au **carnet**, gardé dans
-  le navigateur, qui se solde tout seul quand les résultats arrivent : gagné,
-  perdu, et le réalisé face au retour attendu.
-- **La fiche** d'un match : forme et chiffres sur cinq matchs, buteurs
-  probables, marchés buts (voir ci-dessous). Un volet replié « Comment lire »
-  et un volet « La preuve » portent les tranches de calibration et l'écart au
-  marché saison par saison.
+Une barre fixe porte quatre onglets, le bookmaker dont les cotes s'affichent,
+la mise, et le ticket. Le ticket est une colonne fixe sur grand écran, un
+panneau coulissant sur mobile ; il vit dans l'adresse de la page, copier le
+lien c'est partager le ticket.
 
-Aucun bookmaker régulé n'offre d'API de placement de pari, et automatiser un
-compte viole leurs conditions : la plateforme compare et prépare, le pari se
-fait chez eux.
+- **Matchs** : les matchs des 35 prochains jours, regroupés par jour ou par
+  championnat, repliés avec un résumé (favoris nets, matchs serrés), en vue
+  compacte ou détaillée, filtrés par jour, championnat, équipe, matchs cotés,
+  mes sélections. Heures dans le fuseau du visiteur, compte à rebours sous
+  24 h, verrouillage au coup d'envoi, score une fois joué. Un match pas encore
+  coté se joue à notre prix juste (1 ÷ probabilité, sans marge), marqué ≈. La
+  fiche d'un match donne forme, buteurs probables et marchés buts.
+- **Propositions** : trois combinés sur les matchs filtrés, de 2 à 6
+  sélections, quatre objectifs (cote cible, marge minimale, consensus
+  modèle-marché, une sélection par journée), chacun avec sa raison en une
+  ligne, sa probabilité selon le marché et selon nous, la marge composée, les
+  gains si ça passe et le retour moyen sur la mise saisie. Des combinaisons,
+  pas des conseils : toutes perdent en moyenne.
+- **Bilan** : ce que les propositions ont donné, à la mise que le visiteur
+  tape. Deux périodes : le réel depuis le lancement, et le rejeu de la dernière
+  saison complète (`make proposals-backtest`, prédictions hors échantillon,
+  cotes de clôture, vrais résultats). Pour chaque objectif : paris, gagnés face
+  au taux annoncé, misé, récupéré, résultat face à l'attendu, la courbe
+  cumulée réalisé contre attendu, et chaque semaine avec ses trois paris et
+  leurs sélections cochées. Puis le carnet du visiteur : ce qu'il a réellement
+  misé, soldé avec les résultats, gardé dans son navigateur.
+- **Méthode** : les chiffres du modèle, le diagramme de fiabilité, un lexique
+  en huit entrées, la preuve par tranche et l'écart au marché saison par
+  saison.
+
+Le pari se place chez le bookmaker, jamais ici : un bouton ouvre son site, un
+autre copie le ticket, on reporte la cote obtenue et « J'ai misé » alimente le
+carnet. Aucun bookmaker régulé n'offre d'API de placement, et automatiser un
+compte viole leurs conditions.
+
+### Les propositions figées
+
+Le combinateur existe en deux exemplaires qui doivent rester identiques : le
+JavaScript de la page, et `src/app/combos.py`. Le second sert à deux choses.
+Chaque semaine, à la première publication qui voit au moins six matchs cotés
+dans les sept jours, `make publish` fige dans `predictions/proposals.parquet`
+les trois propositions de chaque objectif, telles que la page les montrait,
+en ajout seul. Et `make proposals-backtest` rejoue le même algorithme semaine
+par semaine sur la dernière saison complète dans
+`reports/proposals_backtest.parquet`. Le site solde les deux registres avec
+les matchs joués : une proposition est gagnée si toutes ses sélections
+passent, perdue dès qu'une échoue, en cours sinon. Sur 2025-26, l'objectif
+« cote cible » réussit 10,3 % de ses paris pour 10,2 % annoncés : les
+probabilités disent vrai, et le résultat suit la marge du bookmaker.
 
 ## La publication automatique
 
@@ -436,6 +460,7 @@ matchs publiés joués.
 | `reports/walk_forward.md` | stabilité saison par saison et saturation de l'historique |
 | `reports/information.md` | test d'information : poids du modèle une fois le marché connu, mélange hors échantillon |
 | `reports/oos_predictions.parquet` | prédictions hors échantillon des 4 saisons walk-forward, modèle et marché, réutilisables sans réentraîner |
+| `reports/proposals_backtest.parquet` | le combinateur rejoué sur la dernière saison complète, une ligne par sélection |
 | `reports/tracking.md` | calibration des prédictions publiées |
 
 ## Documents
