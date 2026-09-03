@@ -106,6 +106,17 @@ def _kickoff(row: dict[str, Any]) -> str | None:
     return None
 
 
+def _rest(played: pl.DataFrame, team: str, before: dt.date) -> int | None:
+    """Days since the team's last played match before `before`, capped at 30."""
+    last = played.filter(
+        ((pl.col("home_team") == team) | (pl.col("away_team") == team))
+        & (pl.col("date") < before)
+    )["date"].max()
+    if not isinstance(last, dt.date):
+        return None
+    return min(30, (before - last).days)
+
+
 def _form(played: pl.DataFrame, team: str, before: dt.date, n: int = 5) -> list[str]:
     """Last n results of `team` before `before`, oldest first, as V / N / D."""
     rows = (
@@ -148,6 +159,7 @@ def _cards(
             "team": team["team"],
             "elo": round(team["elo"]),
             "form": _form(played, team["team"], dt.date.fromisoformat(match["date"])),
+            "rest": _rest(played, team["team"], dt.date.fromisoformat(match["date"])),
             "points5": round(5 * team["form_points_5"], 1),
             "gf": round(team["goals_scored_5"], 2),
             "ga": round(team["goals_conceded_5"], 2),
@@ -205,6 +217,14 @@ def _matches(
             "overround": overround,
             "books": books,
             "result": r["result"],
+            # The market's closing price, once the match is played: what a bet
+            # taken earlier is judged against (closing line value).
+            "closing": (
+                [float(r[f"odds_close_avg_{o}"]) for o in "hda"]
+                if r["result"] is not None
+                and all(r[f"odds_close_avg_{o}"] is not None for o in "hda")
+                else None
+            ),
             "score": (
                 f"{r['home_goals']}-{r['away_goals']}"
                 if r["home_goals"] is not None

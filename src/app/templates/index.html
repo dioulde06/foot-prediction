@@ -336,6 +336,41 @@
   .toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
   @media (max-width: 980px) { .toast { bottom: 84px; } }
 
+  /* ============ never shown ============ */
+  .never .nhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 700; font-size: 12.5px; margin-bottom: 6px; }
+  .never .nhead span { font-weight: 400; color: var(--paper-ink-2); font-size: 11px; }
+  .ntab { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .ntab th, .ntab td { padding: 3px 0; text-align: right; border-bottom: 1px dotted var(--paper-line); white-space: normal; }
+  .ntab th:first-child, .ntab td:first-child { text-align: left; color: var(--paper-ink-2); font-weight: 400; }
+  .ntab th { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--paper-ink-2); font-weight: 700; background: transparent; }
+  .ntab td { font-weight: 500; }
+  .nnote { margin: 8px 0 0; font-size: 11px; line-height: 1.5; color: var(--paper-ink-2); }
+  .range-bar { position: relative; height: 10px; margin: 8px 0 4px; background: rgba(0, 0, 0, .06); border-radius: 5px; }
+  .range-bar i { position: absolute; top: 0; bottom: 0; }
+  .range-bar .band { background: var(--paper-ink-2); opacity: .35; border-radius: 5px; }
+  .range-bar .med { width: 3px; margin-left: -1px; background: var(--paper-ink); border-radius: 2px; }
+  .range-bar .zero { width: 1px; background: var(--stamp); top: -4px; bottom: -4px; }
+  .range-lab { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  .range-lab span { display: grid; text-align: center; }
+  .range-lab span:first-child { text-align: left; } .range-lab span:last-child { text-align: right; }
+  .range-lab small { font-weight: 400; color: var(--paper-ink-2); font-size: 10px; }
+  .rail.pulse .ticket { animation: pulse 900ms ease-out; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(194, 50, 28, .6); } 100% { box-shadow: 0 0 0 14px rgba(194, 50, 28, 0); } }
+  .budget { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 0 18px 12px; }
+  .budget .stakein { border-bottom-color: var(--line); gap: 10px; }
+  .budget .stakein input { font-size: 16px; width: 80px; }
+  .budget .stakein b { font-size: 12px; }
+  .bmeter { position: relative; flex: 1 1 200px; height: 8px; background: var(--panel-3); border-radius: 4px; overflow: visible; }
+  .bmeter i { display: block; height: 100%; background: var(--good); border-radius: 4px; transition: width 300ms ease; }
+  .bmeter.warm i { background: var(--a); } .bmeter.hot i { background: var(--stamp); }
+  .bmeter em { position: absolute; top: -3px; width: 1px; height: 14px; background: var(--ink-3); }
+  .bmeter .m50 { left: 50%; } .bmeter .m80 { left: 80%; }
+  .budget .why { flex-basis: 100%; font-size: 12.5px; }
+  .ttiles.six { grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--line); }
+  @media (max-width: 900px) { .ttiles.six { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 600px) { .ttiles.six { grid-template-columns: 1fr 1fr; } }
+  .ttiles i .hint { vertical-align: middle; margin-left: 3px; }
+
   /* ============ bilan ============ */
   .tgrid { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
   @media (max-width: 900px) { .tgrid { grid-template-columns: minmax(0, 1fr); } }
@@ -560,6 +595,11 @@
       </div>
       <div class="card carnet">
         <div class="chead"><h2>Mon carnet</h2><span class="label" id="carnet-sub"></span></div>
+        <div class="budget">
+          <label class="stakein"><span class="label">Budget du mois</span><input type="number" id="budget" min="0" max="100000" step="1" inputmode="decimal" placeholder="0" aria-label="Budget mensuel en euros"><b>€</b></label>
+          <div class="bmeter" id="bmeter" hidden><i></i><em class="m50"></em><em class="m80"></em></div>
+          <p class="why" id="budget-note"></p>
+        </div>
         <div id="carnet"></div>
       </div>
     </section>
@@ -883,6 +923,7 @@ function drawer(m) {
         <div class="kv"><span>Points sur 5 matchs</span><b class="n">${t.points5} / 15</b></div>
         <div class="kv"><span>Buts pour · contre</span><b class="n">${t.gf.toFixed(1)} · ${t.ga.toFixed(1)}</b></div>
         <div class="kv"><span>xG pour · contre</span><b class="n">${t.xf.toFixed(1)} · ${t.xa.toFixed(1)}</b></div>
+        ${t.rest !== undefined && t.rest !== null ? `<div class="kv"><span>Repos depuis le dernier match</span><b class="n">${t.rest} j</b></div>` : ""}
       </div>`).join("")}
     </div>
     <div class="label dtitle">Qui peut marquer <span class="hint" title="Probabilité de marquer au moins une fois hors penalty, s'il joue 90 minutes. Ignore blessures et compos.">?</span><small>joueurs ayant joué cette saison, plus de ${DATA.meta.scorers.minMinutes} min sur deux saisons</small></div>
@@ -1037,6 +1078,69 @@ function renderFunnel() {
   document.getElementById("funnel-sum").textContent = legs.length ? `reste ${s2(cq)}` : "";
 }
 
+/* ---------------- what the bookmaker never shows ---------------- */
+/* The same stake as singles pays the margin once; the combo multiplies it.
+   n legs, 2^n outcomes, independent: exact distribution of the singles' payout. */
+function singlesVsCombo(legs, S) {
+  const items = legs.map(([id, o]) => { const m = byId(id); return { q: legQ(m, o), o: legOdds(m, o) }; });
+  const n = items.length;
+  if (n < 2) return null;
+  const per = S / n;
+  let expSingles = 0, pAhead = 0, maxSingles = 0;
+  for (const it of items) expSingles += per * it.q * it.o;
+  for (let mask = 0; mask < (1 << n); mask++) {
+    let p = 1, pay = 0;
+    for (let i = 0; i < n; i++) { const w = (mask >> i) & 1; p *= w ? items[i].q : 1 - items[i].q; if (w) pay += per * items[i].o; }
+    if (pay > S) pAhead += p;
+    if (pay > maxSingles) maxSingles = pay;
+  }
+  const pCombo = items.reduce((a, it) => a * it.q, 1), oCombo = items.reduce((a, it) => a * it.o, 1);
+  return { n, per, expSingles, pAhead, maxSingles, pCombo, oCombo, expCombo: S * pCombo * oCombo };
+}
+/* A season of this ticket, once a week: where the balance ends up. Fixed seed, so the same ticket always shows the same spread. */
+function seasonSim(pCombo, oCombo, S, weeks = 38, runs = 4000) {
+  let seed = 20260903;
+  const rnd = () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const nets = [];
+  for (let r = 0; r < runs; r++) { let net = 0; for (let w = 0; w < weeks; w++) { net -= S; if (rnd() < pCombo) net += S * oCombo; } nets.push(net); }
+  nets.sort((a, b) => a - b);
+  const q = (x) => nets[Math.floor(x * (runs - 1))];
+  return { weeks, p5: q(0.05), median: q(0.5), p95: q(0.95), pAhead: nets.filter((v) => v > 0).length / runs, expected: weeks * (S * pCombo * oCombo - S) };
+}
+const eur = (x) => `${x > 0 ? "+" : x < 0 ? "−" : ""}${money(Math.abs(x))} €`;
+function neverShown(legs) {
+  const cmp = singlesVsCombo(legs, stake);
+  if (!cmp) return "";
+  const sim = seasonSim(cmp.pCombo, cmp.oCombo, stake);
+  const lo = Math.min(sim.p5, 0), hi = Math.max(sim.p95, 0), span = hi - lo || 1;
+  const x = (v) => (100 * (v - lo) / span).toFixed(1);
+  return `
+    <div class="tsec never">
+      <div class="nhead">Combiné ou simples ?<span>même mise, ${money(stake)} €</span></div>
+      <table class="ntab">
+        <thead><tr><th></th><th>Combiné</th><th>${cmp.n} simples à ${money(cmp.per)} €</th></tr></thead>
+        <tbody>
+          <tr><td>Finir gagnant</td><td>${s2(cmp.pCombo)}</td><td>${p1(cmp.pAhead)} %</td></tr>
+          <tr><td>Gain maximum</td><td>${money(stake * cmp.oCombo)} €</td><td>${money(cmp.maxSingles)} €</td></tr>
+          <tr><td>En moyenne</td><td class="loss">${money(cmp.expCombo)} €</td><td class="${cmp.expSingles >= stake ? "" : "loss"}">${money(cmp.expSingles)} €</td></tr>
+          <tr><td>Le book garde</td><td class="loss">${p1(Math.max(0, 1 - cmp.expCombo / stake))} %</td><td class="loss">${p1(Math.max(0, 1 - cmp.expSingles / stake))} %</td></tr>
+        </tbody>
+      </table>
+      <p class="nnote">Le combiné multiplie la marge, c'est pour ça qu'on te le vend. Les simples la paient une fois : moins de rêve, moins de perte.</p>
+    </div>
+    <div class="tsec never">
+      <div class="nhead">Une saison à ce rythme<span>${sim.weeks} tickets comme celui-ci</span></div>
+      <div class="range-bar" aria-hidden="true">
+        <i class="zero" style="left:${x(0)}%"></i>
+        <i class="band" style="left:${x(sim.p5)}%;width:${(100 * (sim.p95 - sim.p5) / span).toFixed(1)}%"></i>
+        <i class="med" style="left:${x(sim.median)}%"></i>
+      </div>
+      <div class="range-lab"><span>${eur(sim.p5)}<small>1 saison sur 20 en dessous</small></span><span>${eur(sim.median)}<small>médiane</small></span><span>${eur(sim.p95)}<small>1 sur 20 au-dessus</small></span></div>
+      <div class="trow"><span>Finir la saison gagnant</span><b>${p1(sim.pAhead)} %</b></div>
+      <div class="trow"><span>Attendu en fin de saison</span><b class="loss">${eur(sim.expected)}</b></div>
+    </div>`;
+}
+
 /* ---------------- ticket ---------------- */
 function setStake(value) {
   const v = Math.min(100000, Math.max(1, Math.round(Number(value) * 100) / 100 || 1));
@@ -1149,7 +1253,8 @@ function renderTicket() {
       <div class="trow"><span>… si nous avons raison</span><b>${money(stake * backM)} €</b></div>
     </div>
     ${compareBooks(legs)}
-    <div class="stampbox"><span class="stampmark">${esc(stamp)}</span><p class="stamptext">${text}</p></div>`;
+    <div class="stampbox"><span class="stampmark">${esc(stamp)}</span><p class="stamptext">${text}</p></div>
+    ${neverShown(legs)}`;
   document.getElementById("t-hand").innerHTML = handoff(legs, odds);
   writeHash();
   const bar = document.getElementById("minibar");
@@ -1160,6 +1265,23 @@ function renderTicket() {
 }
 
 /* ---------------- bet log ---------------- */
+const PICK_INDEX = { "1": 0, "X": 1, "2": 2 };
+let budget = 0;
+try { const saved = Number(localStorage.getItem("barometre.budget")); if (saved >= 0) budget = saved; } catch (e) { /* default */ }
+function renderBudget() {
+  const month = DATA.meta.today.slice(0, 7);
+  const spent = carnet.filter((c) => (c.at || "").startsWith(month)).reduce((a, c) => a + c.stake, 0);
+  const expectedLoss = carnet.filter((c) => (c.at || "").startsWith(month)).reduce((a, c) => a + c.stake * Math.max(0, 1 - c.pq * c.odds), 0);
+  const input = document.getElementById("budget");
+  if (input && Number(input.value || 0) !== budget) input.value = budget ? String(budget) : "";
+  const meter = document.getElementById("bmeter"), note = document.getElementById("budget-note");
+  if (!budget) { meter.hidden = true; note.textContent = spent ? `${money(spent)} € misés ce mois-ci. Fixe un budget : la page te dira où tu en es et ce que ça coûte en moyenne.` : "Fixe ce que tu acceptes de dépenser par mois. L'espérance étant négative, la mise optimale est zéro ; le budget borne le plaisir."; return; }
+  const share = spent / budget;
+  meter.hidden = false;
+  meter.querySelector("i").style.width = `${Math.min(100, 100 * share).toFixed(1)}%`;
+  meter.className = `bmeter ${share >= 0.8 ? "hot" : share >= 0.5 ? "warm" : ""}`;
+  note.textContent = `${money(spent)} € sur ${money(budget)} € ce mois-ci (${p0(share)} %). Perte attendue sur ces mises : ${money(expectedLoss)} €.${share >= 1 ? " Budget dépassé." : share >= 0.8 ? " Tu approches de la limite." : ""}`;
+}
 function recordBet() {
   const legs = [...picks.entries()].sort((a, b) => byId(a[0]).date.localeCompare(byId(b[0]).date));
   if (!legs.length) return;
@@ -1173,33 +1295,43 @@ function settle(bet) {
   const legs = bet.legs.map((l) => {
     const m = DATA.upcoming.find((x) => x.date === l.date && x.home === l.home && x.away === l.away);
     const res = m && m.result ? OUT.find((o) => o.key === m.result).short : null;
-    return { ...l, status: res === null ? "open" : (res === l.pick ? "won" : "lost"), score: m && m.score };
+    // Closing line value: the price taken against the market's closing price.
+    const idx = PICK_INDEX[l.pick];
+    const closing = m && m.closing && idx !== undefined ? m.closing[idx] : null;
+    const clv = closing && !l.fair ? l.odds / closing - 1 : null;
+    return { ...l, status: res === null ? "open" : (res === l.pick ? "won" : "lost"), score: m && m.score, closing, clv };
   });
   const status = legs.some((l) => l.status === "lost") ? "lost" : legs.every((l) => l.status === "won") ? "won" : "open";
   return { legs, status, payout: status === "won" ? bet.stake * bet.odds : status === "lost" ? 0 : null };
 }
 function renderCarnet() {
   const el = document.getElementById("carnet"), sub = document.getElementById("carnet-sub");
-  if (!carnet.length) { sub.textContent = ""; el.innerHTML = `<div class="empty"><b>Aucun pari enregistré.</b><span>Après avoir misé chez ton bookmaker, clique « J'ai misé » sur le ticket.</span></div>`; return; }
+  if (!carnet.length) { sub.textContent = ""; el.innerHTML = `<div class="empty"><b>Aucun pari enregistré.</b><span>Après avoir misé chez ton bookmaker, clique « J'ai misé » sur le ticket.</span></div>`; renderBudget(); return; }
   const settled = carnet.map((c) => ({ c, s: settle(c) }));
   const staked = carnet.reduce((a, b) => a + b.stake, 0), expected = carnet.reduce((a, b) => a + b.stake * b.pq * b.odds, 0), ifAll = carnet.reduce((a, b) => a + b.stake * b.odds, 0);
+  const marginPaid = carnet.reduce((a, b) => a + b.stake * Math.max(0, 1 - b.pq * b.odds), 0);
   const done = settled.filter((x) => x.s.status !== "open");
   const realised = done.reduce((a, x) => a + x.s.payout, 0), stakedDone = done.reduce((a, x) => a + x.c.stake, 0);
+  const clvs = settled.flatMap((x) => x.s.legs.map((l) => l.clv).filter((v) => v !== null));
+  const clv = clvs.length ? clvs.reduce((a, v) => a + v, 0) / clvs.length : null;
   const LABEL = { open: "en cours", won: "gagné", lost: "perdu" };
   sub.textContent = `${carnet.length} pari${carnet.length > 1 ? "s" : ""} · ${money(staked)} € misés`;
   el.innerHTML = `
-    <div class="ttiles four">
+    <div class="ttiles six">
       <div><i>Misé</i><b class="n">${money(staked)} €</b></div>
       <div><i>Attendu</i><b class="n">${money(expected)} €</b></div>
       <div><i>Si tout passe</i><b class="n">${money(ifAll)} €</b></div>
       <div class="${done.length && realised < stakedDone ? "bad" : done.length ? "good" : ""}"><i>Réalisé</i><b class="n">${done.length ? `${money(realised)} € / ${money(stakedDone)} €` : "–"}</b></div>
+      <div class="bad"><i>Marge payée au book</i><b class="n">${money(marginPaid)} €</b><span>gagné ou perdu, il l'a prise</span></div>
+      <div class="${clv === null ? "" : clv >= 0 ? "good" : "bad"}"><i>Clôture battue <span class="hint" title="Ta cote face à la cote de clôture du marché, sur les sélections jouées. Positif : tu as pris le prix avant que le marché ne le baisse. C'est le test de compétence des parieurs professionnels.">?</span></i><b class="n">${clv === null ? "–" : `${clv >= 0 ? "+" : ""}${p1(clv)} %`}</b><span>${clvs.length ? `${clvs.length} sélection${clvs.length > 1 ? "s" : ""} jouée${clvs.length > 1 ? "s" : ""}` : "après les premiers matchs"}</span></div>
     </div>
     ${settled.map(({ c, s: st }) => `<div class="cbet ${st.status}">
       <div class="cb1"><span>${frDate(c.at)} · ${esc(bookOf(c.book) ? bookOf(c.book).name : c.book)} · ${c.legs.length} sélection${c.legs.length > 1 ? "s" : ""}</span><span class="n">${money(c.stake)} € @${c.odds.toFixed(2)}${c.ours && Math.abs(c.ours - c.odds) > 0.005 ? ` <small>(nous ${c.ours.toFixed(2)})</small>` : ""}</span></div>
-      <div class="cb2">${st.legs.map((l) => `<span class="${l.status}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.status === "won" ? " ✓" : l.status === "lost" ? " ✗" : ""}</span>`).join("")}</div>
+      <div class="cb2">${st.legs.map((l) => `<span class="${l.status}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.status === "won" ? " ✓" : l.status === "lost" ? " ✗" : ""}${l.clv !== null ? ` <small>clôture ${l.clv >= 0 ? "+" : ""}${p1(l.clv)} %</small>` : ""}</span>`).join("")}</div>
       <div class="cb3"><span>${st.status === "open" ? `si ça passe ${money(c.stake * c.odds)} € · attendu ${money(c.stake * c.pq * c.odds)} €` : `réalisé ${money(st.payout)} € · attendu ${money(c.stake * c.pq * c.odds)} €`}</span><span class="status ${st.status}">${LABEL[st.status]}</span><button type="button" class="kill" data-del="${c.id}" aria-label="Supprimer ce pari">×</button></div>
     </div>`).join("")}
     ${done.length ? "" : `<p class="caveat">${esc(DATA.meta.resultsNote)}</p>`}`;
+  renderBudget();
 }
 function renderBook() {
   const b = bookOf(book);
@@ -1315,7 +1447,13 @@ document.addEventListener("click", (e) => {
   const nav = t.closest("[data-view]");
   if (nav) { e.preventDefault(); setView(nav.dataset.view); return; }
   if (t.closest("#coach-ok")) { document.getElementById("coach").hidden = true; try { localStorage.setItem("barometre.coach", "1"); } catch (err) { /* ignore */ } return; }
-  if (t.closest("#ticketbtn")) { openRail(!document.getElementById("rail").classList.contains("open")); return; }
+  if (t.closest("#ticketbtn")) {
+    if (window.matchMedia("(max-width: 980px)").matches) { openRail(!document.getElementById("rail").classList.contains("open")); return; }
+    const rail = document.getElementById("rail");
+    rail.scrollIntoView({ behavior: "smooth", block: "start" });
+    rail.classList.remove("pulse"); void rail.offsetWidth; rail.classList.add("pulse");
+    return;
+  }
   if (t.closest("#railclose")) { openRail(false); return; }
   if (t.closest("#minibar")) { e.preventDefault(); openRail(true); return; }
   const opt = t.closest("[data-m]");
@@ -1391,6 +1529,7 @@ for (const id of ["stake", "stake-m"]) {
   el.addEventListener("input", (e) => { if (e.target.value !== "") { setStake(e.target.value); renderTicket(); renderProps(); } });
   el.addEventListener("blur", () => { setStake(el.value); renderTicket(); renderProps(); });
 }
+document.getElementById("budget").addEventListener("input", (e) => { budget = Math.max(0, Number(e.target.value) || 0); try { localStorage.setItem("barometre.budget", String(budget)); } catch (err) { /* ignore */ } renderBudget(); });
 document.getElementById("track-stake").addEventListener("input", (e) => { if (e.target.value !== "") { setTrackStake(e.target.value); renderTrack(); } });
 document.getElementById("track-stake").addEventListener("blur", () => { setTrackStake(document.getElementById("track-stake").value); renderTrack(); });
 window.addEventListener("hashchange", () => { const raw = (location.hash || "").replace(/^#/, ""); const v = Object.fromEntries(raw.split(";").map((kv) => kv.split("="))).v; if (v && VIEWS.includes(v) && v !== currentView) setView(v, false); });

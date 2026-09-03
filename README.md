@@ -372,6 +372,29 @@ autre copie le ticket, on reporte la cote obtenue et « J'ai misé » alimente l
 carnet. Aucun bookmaker régulé n'offre d'API de placement, et automatiser un
 compte viole leurs conditions.
 
+### Ce qu'un bookmaker ne montre pas
+
+Cinq calculs, tous dans le navigateur, à partir de ce qui est déjà sur la page :
+
+- **Combiné ou simples.** Pour le ticket en cours, la même mise jouée en paris
+  simples : probabilité de finir gagnant, gain maximum, retour moyen, marge
+  payée. Le combiné multiplie la marge, c'est pour ça qu'on le vend ; les
+  simples la paient une fois. Distribution exacte, 2ⁿ issues indépendantes.
+- **Une saison à ce rythme.** Le même ticket joué 38 semaines, simulé 4 000
+  fois : où finit le solde une saison sur vingt en dessous, en médiane, une sur
+  vingt au-dessus, et la probabilité de finir gagnant. La variance avant de la
+  subir.
+- **Clôture battue.** Dans le carnet, la cote prise face à la cote de clôture
+  du marché sur les sélections jouées : le test de compétence des parieurs
+  professionnels, que les bookmakers ne montrent pas parce qu'un joueur qui bat
+  la clôture se fait limiter. Le site fournit la clôture de chaque match joué.
+- **Marge payée.** En euros, ce que les paris du carnet ont donné au bookmaker
+  en marge, qu'ils aient gagné ou perdu.
+- **Budget du mois.** Ce qu'on accepte de dépenser ; la page montre où on en
+  est, alerte à 50 et 80 %, et dit la perte attendue sur les mises du mois. La
+  mise optimale de Kelly est zéro quand l'espérance est négative ; le budget
+  borne le plaisir.
+
 ### Les propositions figées
 
 Le combinateur existe en deux exemplaires qui doivent rester identiques : le

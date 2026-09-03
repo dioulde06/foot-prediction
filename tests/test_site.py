@@ -306,3 +306,24 @@ def test_the_track_record_is_empty_but_well_formed_without_registries() -> None:
     assert track["live"]["since"] is None
     for objective in ("target", "margin", "consensus"):
         assert track["live"]["objectives"][objective]["weeks"] == []
+
+
+def test_a_played_match_carries_its_closing_odds_and_cards_carry_rest_days() -> None:
+    data = build(
+        predictions=_predictions(1, 5),
+        odds=_odds(1, 5),
+        played=_played(1),
+        scorers=_scorers(5),
+    )
+    by_home = {m["home"]: m for m in data["upcoming"]}
+    assert by_home["H1"]["closing"] == [1.9, 3.5, 4.0]
+    assert by_home["H5"]["closing"] is None
+    # H5 last played on the 1st (as H1's opponent? no: H5 has no earlier match), A5 neither.
+    assert by_home["H5"]["cards"]["home"]["rest"] is None
+    played = pl.concat(
+        [_played(1), _played(2).with_columns(pl.lit("H5").alias("home_team"))]
+    )
+    data = build(
+        predictions=_predictions(5), odds=_odds(5), played=played, scorers=_scorers(5)
+    )
+    assert data["upcoming"][0]["cards"]["home"]["rest"] == 3
