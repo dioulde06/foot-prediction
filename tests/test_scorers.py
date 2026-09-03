@@ -152,3 +152,13 @@ def test_a_fixture_team_without_player_data_is_an_error_not_a_blank() -> None:
     )
     with pytest.raises(KeyError, match="Le Mans"):
         sc.scorers_for_fixtures(features, _players(), PRIOR)
+
+
+def test_a_side_without_a_full_window_gets_no_estimate() -> None:
+    row = {
+        "np_xg_created_5_home": None,
+        "np_xg_conceded_5_home": None,
+        "np_xg_created_5_away": 1.0,
+        "np_xg_conceded_5_away": 1.0,
+    }
+    assert sc.expected_goals(row, PRIOR) is None

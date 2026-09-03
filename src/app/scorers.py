@@ -135,8 +135,21 @@ def team_average(players: pl.DataFrame) -> dict[str, float]:
     return {r["team"]: r["xg"] / r["n"] for r in table.iter_rows(named=True)}
 
 
-def expected_goals(row: dict[str, Any], prior: GoalsPrior) -> tuple[float, float]:
-    """Non-penalty expected goals (home, away) for one feature row."""
+def expected_goals(
+    row: dict[str, Any], prior: GoalsPrior
+) -> tuple[float, float] | None:
+    """Non-penalty expected goals (home, away) for one feature row.
+
+    None when a side has no full rolling window yet, which is the case of a
+    promoted club in its first weeks: no estimate beats a made-up one.
+    """
+    inputs = [
+        row[f"np_xg_{kind}_{WINDOW}_{side}"]
+        for kind in ("created", "conceded")
+        for side in ("home", "away")
+    ]
+    if any(v is None for v in inputs):
+        return None
     home = math.sqrt(
         row[f"np_xg_created_{WINDOW}_home"] * row[f"np_xg_conceded_{WINDOW}_away"]
     )
@@ -178,7 +191,16 @@ def scorers_for_fixtures(
     averages = team_average(players)
     frames = []
     for row in features.iter_rows(named=True):
-        lam_home, lam_away = expected_goals(row, prior)
+        lams = expected_goals(row, prior)
+        if lams is None:
+            LOG.info(
+                "%s - %s: a side has fewer than %d matches of history, no scorers",
+                row["home_team"],
+                row["away_team"],
+                WINDOW,
+            )
+            continue
+        lam_home, lam_away = lams
         for side, lam in (("home", lam_home), ("away", lam_away)):
             team = row[f"{side}_team"]
             if team not in averages:
