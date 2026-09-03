@@ -55,6 +55,22 @@ SCHEMA: dict[str, pl.DataType] = {
     "temperature": pl.Float64(),
 }
 
+# The odds of a fixture, captured once at publication time. A separate file:
+# the prediction log's schema is published and never changes, and the odds
+# are context, not a prediction.
+ODDS_PARQUET = PREDICTIONS_DIR / "odds.parquet"
+ODDS_SCHEMA: dict[str, pl.DataType] = {
+    "captured_at": pl.Datetime("us"),
+    "date": pl.Date(),
+    "league": pl.String(),
+    "home_team": pl.String(),
+    "away_team": pl.String(),
+    "kickoff_time": pl.String(),
+    "odds_avg_h": pl.Float64(),
+    "odds_avg_d": pl.Float64(),
+    "odds_avg_a": pl.Float64(),
+}
+
 
 def fetch_fixtures() -> pl.DataFrame:
     """Upcoming fixtures for the big five, from the football-data feed.
@@ -67,7 +83,7 @@ def fetch_fixtures() -> pl.DataFrame:
         raw = raw[3:]
     frame = pl.read_csv(raw, infer_schema_length=0, encoding="utf8-lossy")
 
-    needed = ["Div", "Date", "HomeTeam", "AwayTeam"]
+    needed = ["Div", "Date", "Time", "HomeTeam", "AwayTeam", "AvgH", "AvgD", "AvgA"]
     missing = [c for c in needed if c not in frame.columns]
     if missing:
         raise ValueError(f"fixtures feed is missing {missing}")
@@ -82,12 +98,49 @@ def fetch_fixtures() -> pl.DataFrame:
             .alias("date"),
             pl.col("HomeTeam").str.strip_chars().alias("home_team"),
             pl.col("AwayTeam").str.strip_chars().alias("away_team"),
+            pl.col("Time").str.strip_chars().alias("kickoff_time"),
+            # Empty cells are legitimate: a book may not have priced a match yet.
+            *[
+                pl.col(f"Avg{o.upper()}")
+                .str.strip_chars()
+                .replace("", None)
+                .cast(pl.Float64)
+                .alias(f"odds_avg_{o}")
+                for o in "hda"
+            ],
         )
         .with_columns(pl.col("league_code").replace_strict(LEAGUES).alias("league"))
         .sort("date", "home_team")
     )
     LOG.info("%d matchs a venir dans les 5 championnats", fixtures.height)
     return fixtures
+
+
+def append_odds(fixtures: pl.DataFrame, captured_at: dt.datetime) -> pl.DataFrame:
+    """Record the odds of every fixture in the feed, once. Never rewrites a row.
+
+    The first capture wins: it is the price that existed when the prediction
+    was published, which is the only one a sceptic can compare it to.
+    """
+    PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+    rows = fixtures.with_columns(
+        pl.lit(captured_at).cast(pl.Datetime("us")).alias("captured_at")
+    ).select(list(ODDS_SCHEMA))
+    if ODDS_PARQUET.exists():
+        history = pl.read_parquet(ODDS_PARQUET)
+        rows = rows.join(
+            history.select("date", "home_team", "away_team"),
+            on=["date", "home_team", "away_team"],
+            how="anti",
+        )
+        if rows.is_empty():
+            return history
+        combined = pl.concat([history, rows])
+    else:
+        combined = rows
+    combined.write_parquet(ODDS_PARQUET)
+    LOG.info("%d nouvelles cotes capturees dans %s", rows.height, ODDS_PARQUET)
+    return combined
 
 
 def load_model(directory: Path = MODEL_DIR) -> tuple[lgb.Booster, float, str]:
@@ -161,7 +214,11 @@ def publish(
 ) -> pl.DataFrame:
     """Predict the upcoming fixtures and append them to the history."""
     booster, temperature, model_hash = load_model(directory)
-    features = upcoming_features(fetch_fixtures())
+    published_at = as_of or dt.datetime.now(dt.UTC).replace(tzinfo=None)
+    fixtures = fetch_fixtures()
+    if not fixtures.is_empty():
+        append_odds(fixtures, published_at)
+    features = upcoming_features(fixtures)
     if features.is_empty():
         LOG.info("aucun match a venir, rien a publier")
         return pl.DataFrame(schema=SCHEMA)
@@ -172,7 +229,6 @@ def publish(
     scaler._temperature = temperature  # noqa: SLF001 -- restored, not refitted
     probs: Probs = scaler.transform(raw)
 
-    published_at = as_of or dt.datetime.now(dt.UTC).replace(tzinfo=None)
     rows = features.select("date", "league", "home_team", "away_team").with_columns(
         pl.Series("p_home", probs[:, CLASSES.index("H")]),
         pl.Series("p_draw", probs[:, CLASSES.index("D")]),

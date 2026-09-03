@@ -1,4 +1,4 @@
-.PHONY: install lint test fetch merge audit-teams baselines train eval information publish track
+.PHONY: install lint test fetch merge audit-teams baselines train eval information publish site track
 
 install:
 	uv sync
@@ -40,6 +40,10 @@ information:
 # Predict the upcoming fixtures and append them to predictions/.
 publish:
 	uv run python -m scripts.publish
+
+# Static site from the committed parquet files, served by GitHub Pages.
+site:
+	uv run python -m src.app.site
 
 # Calibration of the published predictions, once their matches are played.
 track:

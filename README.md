@@ -20,6 +20,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
 | 5 | Validation walk-forward | fait — stable sur 4 saisons ; test d'information : le modèle n'apporte rien au marché |
 | 6 | App de publication et suivi | fait — `make publish` / `make track` |
+| 7 | Site statique | v1 faite — `make site`, combinateur, entonnoir, ticket ; buteurs et automatisation à venir |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
 dans [`PLAN.md`](PLAN.md).
@@ -65,7 +66,8 @@ make lint      # ruff + mypy strict
 make train     # entraîne, calibre, écrit reports/model_report.md
 make eval      # walk-forward + saturation de l'historique
 make information  # le modèle sait-il quelque chose que le marché ignore ?
-make publish   # prédit les matchs à venir, append-only
+make publish   # prédit les matchs à venir, append-only, et capture leurs cotes
+make site      # génère site/index.html depuis les parquets suivis dans git
 make track     # calibration des prédictions publiées, une fois jouées
 
 uv run python scripts/run_baselines.py            # tableau des 3 baselines
@@ -85,13 +87,16 @@ src/
   features/   build.py (build_features), elo.py
   models/     train.py, calibrate.py
   eval/       metrics.py, baselines.py, splits.py, report.py, walk_forward.py
-  app/        publish.py — publication et réconciliation
+  app/        publish.py — publication, capture des cotes, réconciliation
+              site.py — génération du site statique ; templates/index.html
 configs/      lightgbm.yaml
 scripts/      run_baselines, train_and_report, run_walk_forward, publish,
               track_calibration, audit_teams
 tests/
 notebooks/    analyses exécutées, suivies dans git
-predictions/  historique append-only des prédictions publiées, suivi dans git
+predictions/  predictions.parquet, historique append-only des prédictions publiées
+              odds.parquet, cotes capturées à la publication, append-only aussi
+site/         index.html généré par `make site`, servi tel quel
 reports/
   figures/    figures exportées en PNG
 data/
@@ -289,8 +294,43 @@ une ligne d'entraînement — pas de second chemin de code, donc pas d'écart
 entraînement/production. Un test compare les features d'un match sans score à
 celles du même match avec un 9-0 : elles sont identiques.
 
+`make publish` capture aussi, dans `predictions/odds.parquet`, l'heure du coup
+d'envoi et les cotes moyennes du flux au moment de la publication. Fichier
+séparé, lui aussi en ajout seul : le schéma du registre des prédictions est
+publié et ne bouge pas, et la première capture gagne, parce que c'est le prix
+qui existait quand la prédiction est sortie. Ce sont des cotes courantes, pas
+de clôture.
+
 `make track` mesure la calibration des prédictions publiées une fois leurs
 matchs joués, face au marché.
+
+## Le site
+
+`make site` écrit `site/index.html`, une page unique sans serveur, fonction
+pure de quatre fichiers suivis dans git ou reconstruits depuis des sources
+suivies : le registre des prédictions, les cotes capturées, les matchs joués
+et les prédictions hors échantillon du walk-forward
+(`reports/oos_predictions.parquet`). La page change quand on publie, jamais
+entre-temps. Tout ce qu'elle calcule tourne dans le navigateur :
+
+- **Le combinateur** énumère les combinaisons de 2 à 4 sélections parmi les
+  matchs à venir qui ont une cote, et en propose trois selon un objectif :
+  cote cible, marge minimale, ou consensus modèle-marché. Chaque proposition
+  affiche sa probabilité selon le marché et selon nous, ce que le bookmaker
+  garde, et le retour moyen sur 100 €. Des combinaisons, pas des conseils.
+- **L'entonnoir** dessine le rétrécissement de la probabilité combinée à
+  chaque sélection : marché en plein, modèle en contour, prix payé en
+  pointillé.
+- **Le ticket** imprime cote combinée, probabilités, marge composée,
+  espérance, et rappelle pour chaque sélection ce que le modèle a obtenu dans
+  la tranche de probabilité de cette annonce.
+- **La journée**, **ce qui a été joué** (vide tant qu'aucune prédiction
+  publiée n'est jouée), **la preuve tranche par tranche** et l'écart au
+  marché saison par saison viennent tous des parquets.
+
+Un match publié sans cote capturée est affiché mais ne peut pas entrer dans un
+ticket. Les buteurs probables et la publication automatique ne sont pas encore
+là.
 
 ## Rapports générés
 

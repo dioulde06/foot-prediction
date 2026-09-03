@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Baromètre 1X2</title>
+<meta name="description" content="Probabilités 1X2 calibrées pour les cinq grands championnats, publiées avant chaque journée et mesurées face au marché.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;600;700;800&family=Familjen+Grotesk:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Sometype+Mono:wght@400;500;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #e6ebe3;
+    --grid: rgba(17, 26, 20, .075);
+    --panel: #f4f6f1;
+    --panel-2: #e9ede5;
+    --ink: #111a14;
+    --ink-2: #44514a;
+    --ink-3: #6f7b73;
+    --line: #c2cbbe;
+    --line-soft: #d6ddd2;
+    --paper: #f8f5ea;
+    --paper-2: #efeadb;
+    --paper-ink: #1b1911;
+    --paper-ink-2: #6b6552;
+    --paper-line: #cdc6ad;
+    --stamp: #c2321c;
+    --h: #1f5c99;
+    --d: #7a827b;
+    --a: #b3641c;
+    --h-soft: rgba(31, 92, 153, .18);
+    --d-soft: rgba(122, 130, 123, .22);
+    --a-soft: rgba(179, 100, 28, .18);
+    --shadow: 0 1px 2px rgba(17, 26, 20, .08), 0 10px 28px -12px rgba(17, 26, 20, .22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0d120f; --grid: rgba(232, 237, 230, .06);
+      --panel: #151c17; --panel-2: #1c241e;
+      --ink: #e8ede6; --ink-2: #aab5ac; --ink-3: #7d887f;
+      --line: #2a342d; --line-soft: #222b25;
+      --paper: #efe9d9; --paper-2: #e4dcc7;
+      --h: #5f9be0; --d: #8f9990; --a: #d98a3f;
+      --h-soft: rgba(95, 155, 224, .22); --d-soft: rgba(143, 153, 144, .24); --a-soft: rgba(217, 138, 63, .22);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 30px -12px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0d120f; --grid: rgba(232, 237, 230, .06);
+    --panel: #151c17; --panel-2: #1c241e;
+    --ink: #e8ede6; --ink-2: #aab5ac; --ink-3: #7d887f;
+    --line: #2a342d; --line-soft: #222b25;
+    --paper: #efe9d9; --paper-2: #e4dcc7;
+    --h: #5f9be0; --d: #8f9990; --a: #d98a3f;
+    --h-soft: rgba(95, 155, 224, .22); --d-soft: rgba(143, 153, 144, .24); --a-soft: rgba(217, 138, 63, .22);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 30px -12px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; color: var(--ink);
+    background-color: var(--ground);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    font-family: "Familjen Grotesk", "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  .mono, .n { font-family: "Sometype Mono", ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .disp { font-family: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif; }
+  :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 22px 80px; }
+  .label { font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); }
+
+  /* ============ certificate masthead ============ */
+  .cert {
+    display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 0;
+    background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  @media (max-width: 900px) { .cert { grid-template-columns: minmax(0, 1fr); } }
+  .cert-main { padding: 24px 26px 22px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 14px; }
+  @media (max-width: 900px) { .cert-main { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .cert-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; align-items: baseline; }
+  .cert-top .label { color: var(--stamp); }
+  h1 {
+    margin: 0; font-family: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    font-weight: 800; font-size: clamp(54px, 8vw, 92px); line-height: .92; letter-spacing: .005em;
+    text-transform: uppercase; text-wrap: balance;
+  }
+  h1 small { display: block; font-size: .32em; font-weight: 600; letter-spacing: .08em; color: var(--ink-2); margin-top: 8px; }
+  .lede { margin: 0; font-size: 16.5px; line-height: 1.55; color: var(--ink-2); max-width: 62ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .readings { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin-top: 4px; }
+  .readings div { background: var(--panel-2); padding: 10px 14px 11px; }
+  .readings b { display: block; font-size: 20px; font-weight: 500; letter-spacing: -.01em; line-height: 1.1; margin-top: 3px; }
+  .readings i { font-style: normal; font-size: 11.5px; color: var(--ink-3); }
+  .cert-diag { padding: 20px 22px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .cert-diag .label { display: flex; justify-content: space-between; }
+  .cert-diag svg { width: 100%; height: auto; display: block; }
+  .cert-diag p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--ink-3); }
+
+  /* ============ section chrome ============ */
+  .sec { margin-top: 40px; }
+  .sechead { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 14px; }
+  h2 {
+    margin: 0; font-family: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: .01em; text-transform: uppercase;
+  }
+  .sechead p, .sec > p { margin: 0; font-size: 14.5px; color: var(--ink-2); max-width: 66ch; line-height: 1.55; }
+  .sec > p b, .sechead p b { color: var(--ink); font-weight: 600; }
+
+  /* ============ combinator ============ */
+  .comb { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); }
+  .ctl { display: flex; align-items: center; gap: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); }
+  .seg button { appearance: none; background: none; border: 0; border-right: 1px solid var(--line); padding: 7px 13px; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .seg button:last-child { border-right: 0; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+  .range { display: flex; align-items: center; gap: 10px; }
+  .range input { accent-color: var(--stamp); width: 170px; }
+  .range output { font-size: 15px; font-weight: 700; min-width: 4ch; }
+  .props { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1px; background: var(--line); }
+  @media (max-width: 900px) { .props { grid-template-columns: minmax(0, 1fr); } }
+  .prop { background: var(--panel); padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .prop-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .prop-top .label { color: var(--ink-2); }
+  .prop-odds { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: .01em; }
+  .prop-odds small { font-size: 13px; font-weight: 600; color: var(--ink-3); letter-spacing: .06em; margin-right: 4px; }
+  .legs { display: flex; flex-direction: column; gap: 6px; }
+  .leg { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+  .leg i { display: block; width: 4px; height: 100%; min-height: 26px; }
+  .leg i.H { background: var(--h); } .leg i.D { background: var(--d); } .leg i.A { background: var(--a); }
+  .leg .lt { line-height: 1.25; overflow: hidden; }
+  .leg .lt b { font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .leg .lt span { color: var(--ink-3); font-size: 12px; }
+  .leg .lo { font-size: 13px; }
+  .shrink { display: flex; gap: 2px; align-items: flex-end; height: 26px; }
+  .shrink i { display: block; background: var(--ink-3); opacity: .55; width: 100%; }
+  .prop-kv { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 12.5px; color: var(--ink-2); border-top: 1px solid var(--line-soft); padding-top: 10px; }
+  .prop-kv b { font-weight: 500; color: var(--ink); float: right; }
+  .prop-kv .bad b { color: var(--stamp); }
+  .load { appearance: none; margin-top: auto; background: none; border: 1px solid var(--ink); padding: 9px 12px; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+  .load:hover { background: var(--ink); color: var(--panel); }
+  .load[aria-pressed="true"] { background: var(--ink); color: var(--panel); }
+  .noprop { padding: 18px 20px; color: var(--ink-3); font-size: 13.5px; }
+
+  /* ============ bench: board + funnel + ticket ============ */
+  .bench { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 26px; align-items: start; }
+  @media (max-width: 980px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+  .board { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); min-width: 0; }
+  .bhead { display: grid; grid-template-columns: 74px minmax(0, 1fr) 232px 32px; gap: 14px; padding: 9px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .bhead span:nth-child(3) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+  @media (max-width: 720px) { .bhead { display: none; } }
+  .row { border-bottom: 1px solid var(--line-soft); }
+  .row:last-child { border-bottom: 0; }
+  .rmain { display: grid; grid-template-columns: 74px minmax(0, 1fr) 232px 32px; gap: 14px; padding: 13px 16px 12px; align-items: center; }
+  @media (max-width: 720px) { .rmain { grid-template-columns: minmax(0, 1fr); gap: 10px; } }
+  .when { font-size: 12px; color: var(--ink-3); line-height: 1.3; }
+  .when b { display: block; color: var(--ink); font-size: 15px; font-weight: 700; }
+  .when em { font-style: normal; display: inline-block; margin-top: 3px; padding: 1px 5px; border: 1px solid var(--line); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; }
+  .fixture { min-width: 0; }
+  .teams { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-family: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif; font-size: 27px; font-weight: 700; line-height: 1; letter-spacing: .01em; text-transform: uppercase; }
+  .teams span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .teams span:last-child { text-align: right; }
+  .teams i { font-style: normal; font-family: "Sometype Mono", ui-monospace, monospace; font-size: 11px; color: var(--ink-3); letter-spacing: .1em; flex: none; }
+  .rails { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 3px 8px; margin-top: 8px; align-items: center; }
+  .rails .label { font-size: 9.5px; text-align: right; }
+  .rail { display: flex; gap: 2px; height: 12px; }
+  .rail i { display: block; height: 100%; }
+  .rail.market i { opacity: .38; }
+  .rail i.H { background: var(--h); } .rail i.D { background: var(--d); } .rail i.A { background: var(--a); }
+  .picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .pick {
+    appearance: none; background: var(--panel-2); border: 1px solid var(--line-soft); border-top: 3px solid var(--line);
+    padding: 7px 8px 6px; text-align: center; display: flex; flex-direction: column; gap: 3px; line-height: 1.1;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .pick.H { border-top-color: var(--h); } .pick.D { border-top-color: var(--d); } .pick.A { border-top-color: var(--a); }
+  .pick:hover { border-color: var(--ink-3); }
+  .pick b { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .pick span { font-size: 10.5px; color: var(--ink-3); }
+  .pick span em { font-style: normal; color: var(--ink-2); }
+  .pick[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  .pick[aria-pressed="true"] span, .pick[aria-pressed="true"] span em { color: var(--panel); opacity: .8; }
+  .pick.H[aria-pressed="true"] { border-top-color: var(--h); } .pick.A[aria-pressed="true"] { border-top-color: var(--a); }
+  .more { appearance: none; background: none; border: 1px solid var(--line-soft); width: 32px; height: 32px; font-size: 16px; color: var(--ink-3); display: grid; place-items: center; }
+  .more:hover { color: var(--ink); border-color: var(--ink-3); }
+  .more[aria-expanded="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+  @media (max-width: 720px) { .more { width: 100%; height: 30px; } }
+  .drawer { display: none; padding: 6px 16px 18px; border-top: 1px dashed var(--line); background: var(--panel-2); }
+  .drawer.on { display: block; }
+  .dgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; margin-top: 12px; }
+  .dtitle { margin: 16px 0 8px; }
+  .dtitle:first-child { margin-top: 10px; }
+  .tteam { font-size: 14.5px; font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .tteam em { font-style: normal; font-size: 11.5px; color: var(--ink-3); font-weight: 400; }
+  .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--ink-2); padding: 3px 0; border-bottom: 1px solid var(--line-soft); }
+  .kv b { font-weight: 500; color: var(--ink); }
+  .pills { display: flex; gap: 3px; }
+  .pills i { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; font-style: normal; font-size: 10px; font-weight: 700; color: #fff; }
+  .pills i.V { background: var(--h); } .pills i.N { background: var(--d); } .pills i.D { background: var(--a); }
+  .sc { display: flex; flex-direction: column; gap: 6px; }
+  .scrow { display: grid; grid-template-columns: minmax(0, 1fr) 90px 44px; gap: 10px; align-items: center; font-size: 12.5px; }
+  .scname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scname em { font-style: normal; color: var(--ink-3); font-size: 11px; padding-left: 6px; }
+  .scmeter { height: 6px; background: var(--line-soft); }
+  .scmeter i { display: block; height: 100%; background: var(--a); }
+  .scpct { text-align: right; }
+  .goals { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .gcell { background: var(--panel); padding: 10px 12px; border: 1px solid var(--line-soft); }
+  .gcell b { display: block; font-size: 19px; font-weight: 500; letter-spacing: -.01em; }
+  .gcell span { font-size: 11.5px; color: var(--ink-3); }
+  .caveat { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); margin: 14px 0 0; max-width: 68ch; }
+
+  /* ============ funnel ============ */
+  .side { position: sticky; top: 18px; display: flex; flex-direction: column; gap: 18px; }
+  .funnel { background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); padding: 14px 16px 12px; }
+  .funnel .label { display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .funnel svg { width: 100%; height: auto; display: block; }
+  .funnel svg text { font-family: "Sometype Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .fleg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 11.5px; color: var(--ink-2); }
+  .fleg span { display: inline-flex; align-items: center; gap: 6px; }
+  .fleg i { display: inline-block; width: 16px; height: 9px; }
+  .fleg i.mk { background: var(--h-soft); border: 1px solid var(--h); }
+  .fleg i.md { border: 1.5px solid var(--ink); }
+  .fleg i.od { border: 1.5px dashed var(--stamp); }
+
+  /* ============ ticket ============ */
+  .ticket {
+    background: var(--paper); color: var(--paper-ink); box-shadow: var(--shadow);
+    font-family: "Sometype Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums;
+    font-size: 12.5px; line-height: 1.55;
+    background-image: repeating-linear-gradient(0deg, rgba(0, 0, 0, .016) 0 2px, transparent 2px 4px);
+  }
+  .thead { padding: 16px 20px 12px; text-align: center; border-bottom: 2px dashed var(--paper-line); }
+  .thead .tname { font-size: 13px; font-weight: 700; letter-spacing: .22em; }
+  .thead .tsub { font-size: 10.5px; letter-spacing: .1em; color: var(--paper-ink-2); margin-top: 5px; }
+  .tbody { padding: 12px 20px; }
+  .tempty { color: var(--paper-ink-2); font-size: 12px; line-height: 1.6; margin: 0; }
+  .tempty b { color: var(--paper-ink); }
+  .tleg { padding: 8px 0; border-bottom: 1px dotted var(--paper-line); }
+  .tleg:last-child { border-bottom: 0; }
+  .tleg .l1 { display: flex; justify-content: space-between; gap: 10px; font-weight: 700; }
+  .tleg .l2 { display: flex; justify-content: space-between; gap: 10px; color: var(--paper-ink-2); font-size: 11.5px; }
+  .tleg .l3 { color: var(--paper-ink-2); font-size: 11px; margin-top: 3px; }
+  .kill { appearance: none; background: none; border: 0; padding: 0 0 0 10px; color: var(--paper-ink-2); font-size: 14px; line-height: 1; }
+  .kill:hover { color: var(--stamp); }
+  .tsec { padding: 10px 20px; border-top: 2px dashed var(--paper-line); }
+  .trow { display: flex; justify-content: space-between; gap: 10px; padding: 2px 0; }
+  .trow span { color: var(--paper-ink-2); }
+  .trow b { font-weight: 500; }
+  .trow.hero { padding-top: 8px; margin-top: 6px; border-top: 1px solid var(--paper-line); }
+  .trow.hero span { color: var(--paper-ink); font-weight: 700; }
+  .trow.hero b { font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+  .loss { color: var(--stamp); }
+  .stampbox { padding: 16px 20px 20px; text-align: center; border-top: 2px dashed var(--paper-line); }
+  .stampmark { display: inline-block; transform: rotate(-2.4deg); border: 2px solid var(--stamp); color: var(--stamp); padding: 7px 14px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; opacity: .92; }
+  .stamptext { margin: 12px 0 0; font-size: 11.5px; line-height: 1.55; color: var(--paper-ink-2); text-align: left; }
+  .stamptext b { color: var(--paper-ink); }
+  .tfoot { padding: 0 20px 16px; font-size: 10.5px; color: var(--paper-ink-2); text-align: center; letter-spacing: .04em; }
+
+  /* ============ tables ============ */
+  .scroll { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  caption { caption-side: bottom; padding: 12px 16px; font-size: 12px; color: var(--ink-3); text-align: left; }
+  th, td { padding: 8px 14px; text-align: right; border-bottom: 1px solid var(--line-soft); white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+  thead th { font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.yes { color: var(--h); font-weight: 600; } td.no { color: var(--stamp); }
+  .quad { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); margin: 16px 0; }
+  .quad div { background: var(--panel); padding: 12px 16px; }
+  .quad b { display: block; font-size: 24px; font-weight: 500; letter-spacing: -.02em; }
+  .quad span { font-size: 12px; color: var(--ink-3); }
+  .sec > p + p { margin-top: 10px; }
+
+  .why { flex-basis: 100%; margin: 0; font-size: 13px; color: var(--ink-2); }
+  .nopick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; align-items: center; text-align: center; }
+  .nopick .label { grid-column: 1 / -1; font-size: 9.5px; }
+  .nopick b { font-size: 15px; font-weight: 500; color: var(--ink-3); background: var(--panel-2); padding: 6px 0; border: 1px dashed var(--line); }
+  .cert-diag svg text, .funnel svg text { fill: var(--ink); }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="cert">
+    <div class="cert-main">
+      <div class="cert-top">
+        <span class="label">Certificat d'étalonnage · cinq championnats · 1X2</span>
+        <span class="label mono" id="cert-id"></span>
+      </div>
+      <h1>Baromètre<br>1X2 <small>Un instrument étalonné face au marché, pas un pronostiqueur</small></h1>
+      <p class="lede">
+        Compose une combinaison, ou laisse le banc t'en proposer trois selon ton objectif.
+        Le ticket imprime <b>ce qu'elle vaut vraiment</b> : la probabilité honnête qu'elle
+        tombe, ce que le bookmaker garde à chaque étape, et ce que tu récupères en moyenne.
+      </p>
+      <dl class="readings" id="readings"></dl>
+    </div>
+    <div class="cert-diag">
+      <span class="label"><span>Fiabilité mesurée</span><span id="diag-sub"></span></span>
+      <svg id="reliability" viewBox="0 0 260 240" role="img" aria-label="Diagramme de fiabilité : probabilité annoncée contre fréquence observée"></svg>
+      <p>Chaque point est une tranche de probabilité annoncée, sur une saison jamais vue à l'entraînement. Sur la diagonale, l'instrument dit vrai. La taille du point est le nombre d'annonces.</p>
+    </div>
+  </header>
+
+  <section class="sec">
+    <div class="sechead">
+      <h2>Le combinateur</h2>
+      <p>Des combinaisons, <b>pas des conseils</b>. Chacune a une espérance négative ; l'objectif choisit seulement laquelle perd le moins vite, et pourquoi.</p>
+    </div>
+    <div class="comb">
+      <div class="controls">
+        <div class="ctl">
+          <span class="label">Objectif</span>
+          <div class="seg" id="obj">
+            <button type="button" data-obj="target" aria-pressed="true">Cote cible</button>
+            <button type="button" data-obj="margin" aria-pressed="false">Marge minimale</button>
+            <button type="button" data-obj="consensus" aria-pressed="false">Consensus</button>
+          </div>
+        </div>
+        <div class="ctl" id="ctl-target">
+          <span class="label">Autour de</span>
+          <label class="range"><input type="range" id="target" min="2" max="30" step="0.5" value="6" aria-label="Cote cible"><output class="mono" id="target-out">6.0</output></label>
+        </div>
+        <div class="ctl" id="ctl-legs" hidden>
+          <span class="label">Sélections</span>
+          <div class="seg" id="nlegs">
+            <button type="button" data-n="2" aria-pressed="false">2</button>
+            <button type="button" data-n="3" aria-pressed="true">3</button>
+            <button type="button" data-n="4" aria-pressed="false">4</button>
+          </div>
+        </div>
+        <p class="why" id="obj-why"></p>
+      </div>
+      <div class="props" id="props"></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sechead">
+      <h2>La journée</h2>
+      <p id="day-sub"></p>
+    </div>
+    <div class="bench">
+      <div class="board">
+        <div class="bhead">
+          <span class="label">Heure</span>
+          <span class="label">Affiche · nous en plein, le marché en clair</span>
+          <span><span class="label">1</span><span class="label">X</span><span class="label">2</span></span>
+          <span></span>
+        </div>
+        <div id="rows"></div>
+      </div>
+      <aside class="side">
+        <div class="funnel">
+          <span class="label"><span>L'entonnoir</span><span id="funnel-sum"></span></span>
+          <svg id="funnel-svg" viewBox="0 0 360 60" role="img" aria-label="Rétrécissement de la probabilité combinée à chaque sélection"></svg>
+          <div class="fleg">
+            <span><i class="mk"></i>Le marché</span>
+            <span><i class="md"></i>Nous</span>
+            <span><i class="od"></i>Ce que la cote paie</span>
+          </div>
+        </div>
+        <div class="ticket">
+          <div class="thead">
+            <div class="tname">BAROMÈTRE 1X2</div>
+            <div class="tsub">TICKET NON VALIDE · CALCUL SEULEMENT</div>
+          </div>
+          <div class="tbody" id="t-legs"></div>
+          <div id="t-sums"></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sechead"><h2>Pourquoi tu ne récupères jamais 100 %</h2></div>
+    <p>
+      Sous chaque cote, la ligne « nous · marché » te dit ce que chacun pense de l'issue. Le retour par euro misé, <b>si le marché a exactement raison</b>, n'est jamais 100 %, et il change selon l'issue : le bookmaker charge sa marge sur les outsiders.
+    </p>
+    <p>
+      Nous l'avons quantifié sur six saisons : cette distorsion est proportionnelle à la marge affichée, à 2 % près. Et ces marges <b>se multiplient</b>. Un combiné de quatre matchs à 5 % de marge chacun en retient 19 %. C'est le seul chiffre qui compte pour une sélection multiple, l'entonnoir le dessine en pointillé rouge, et aucun opérateur ne l'affiche.
+    </p>
+  </section>
+
+  <section class="sec">
+    <div class="sechead">
+      <h2>Ce qui a été joué</h2>
+      <p id="retro-sub"></p>
+    </div>
+    <div class="quad" id="retro-quad"></div>
+    <div class="scroll" id="retro-scroll">
+      <table>
+        <caption>Probabilités publiées avant le coup d'envoi, en pourcentage, dans l'ordre 1 / X / 2. « Favori sorti » indique si l'issue la plus probable selon chacun s'est produite.</caption>
+        <thead><tr>
+          <th scope="col">Date</th><th scope="col">Match</th><th scope="col">Score</th>
+          <th scope="col">Nous</th><th scope="col">Marché</th><th scope="col">Favori nous</th><th scope="col">Favori marché</th>
+        </tr></thead>
+        <tbody id="retro-rows"></tbody>
+      </table>
+    </div>
+    <p id="retro-note"></p>
+  </section>
+
+  <section class="sec">
+    <div class="sechead">
+      <h2>La preuve, tranche par tranche</h2>
+      <p>Quand tu sélectionnes une issue, le ticket rappelle ce que le modèle a obtenu <b>dans la tranche de probabilité de cette annonce</b>. Annoncer 38 % ne veut rien dire tant qu'on ne sait pas si ses 30-40 % arrivent bien un tiers du temps.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <caption id="bins-caption"></caption>
+        <thead><tr>
+          <th scope="col">Quand il annonce</th><th scope="col">Occasions</th><th scope="col">Il annonce en moyenne</th><th scope="col">C'est arrivé</th><th scope="col">Écart</th>
+        </tr></thead>
+        <tbody id="bin-rows"></tbody>
+      </table>
+    </div>
+    <div class="quad" id="seasons-quad"></div>
+  </section>
+
+  <section class="sec">
+    <div class="sechead"><h2>Ce que ce baromètre ne fera pas</h2></div>
+    <p id="wont"></p>
+    <p>
+      Les features sont construites uniquement à partir de matchs antérieurs, vérifié par vingt tests d'invariance temporelle. Les probabilités du marché sont les cotes dévigorisées par la méthode de puissance. Les prédictions sont publiées avant le coup d'envoi dans un registre en ajout seul, suivi dans git : l'antériorité est prouvée par l'historique des commits, pas par un horodatage que nous écrivons nous-mêmes. Les cotes affichées sont celles capturées au moment de la publication, pas celles de clôture.
+    </p>
+  </section>
+
+</div>
+
+<script>
+const DATA = {"meta":{"publishedAt":"2026-09-02 13:28 UTC","generatedAt":"2026-09-03","modelHash":"faf088410c6e6e88","temperature":1.0363,"nPublished":2},"upcoming":[{"id":"m0","date":"2026-09-03","time":"19:45","league":"Ligue 1","home":"Toulouse","away":"Lille","model":[0.2359,0.2739,0.4902],"odds":[3.36,3.3,2.12],"market":[0.2735,0.2788,0.4476],"overround":0.0723,"publishedAt":"2026-09-02 13:28"},{"id":"m1","date":"2026-09-03","time":"20:00","league":"La Liga","home":"Sociedad","away":"Celta","model":[0.3837,0.3204,0.2959],"odds":[1.95,3.48,3.69],"market":[0.4894,0.2633,0.2473],"overround":0.0712,"publishedAt":"2026-09-02 13:28"}],"retro":[],"standing":{"seasons":[{"season":"2022-23","n":1826,"model":1.0106,"market":0.9753,"gap":0.0353},{"season":"2023-24","n":1752,"model":0.9891,"market":0.9521,"gap":0.037},{"season":"2024-25","n":1752,"model":0.9925,"market":0.96,"gap":0.0325},{"season":"2025-26","n":1751,"model":1.0044,"market":0.9769,"gap":0.0275}],"bins_season":"2025-26","ece":0.0106},"bins":[{"label":"0-20","lo":0.0,"hi":0.2,"n":910,"predicted":0.15111339341520466,"observed":0.16373626373626374},{"label":"20-30","lo":0.2,"hi":0.3,"n":1958,"predicted":0.2529481823503866,"observed":0.2604698672114402},{"label":"30-40","lo":0.3,"hi":0.4,"n":893,"predicted":0.33993111284338734,"observed":0.3303471444568869},{"label":"40-50","lo":0.4,"hi":0.5,"n":632,"predicted":0.4510850375316835,"observed":0.42563291139240506},{"label":"50-65","lo":0.5,"hi":0.65,"n":549,"predicted":0.5652907217424062,"observed":0.5683060109289617},{"label":"65+","lo":0.65,"hi":1.0,"n":311,"predicted":0.7049049428435911,"observed":0.6945337620578779}]};
+
+const OUT = [
+  { key: "H", name: "Victoire domicile", short: "1", cls: "H" },
+  { key: "D", name: "Match nul", short: "X", cls: "D" },
+  { key: "A", name: "Victoire extérieur", short: "2", cls: "A" },
+];
+const STAKE = 100;
+const picks = new Map();
+let objective = "target", target = 6, nLegs = 3, loadedProp = null;
+
+const p1 = (x) => (100 * x).toFixed(1);
+const p0 = (x) => Math.round(100 * x);
+const money = (x) => x.toFixed(2).replace(".", ",");
+const fr = (x, d = 3) => x.toFixed(d).replace(".", ",");
+const byId = (id) => DATA.upcoming.find((x) => x.id === id);
+const binOf = (p) => DATA.bins.find((b) => p >= b.lo && p < b.hi) || DATA.bins[DATA.bins.length - 1];
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const legName = (m, o) => o === 1 ? `${m.home} – ${m.away}` : (o === 0 ? m.home : m.away);
+const frDate = (iso) => { const [y, mo, d] = iso.split("-"); return `${d}.${mo}.${y}`; };
+const PRICED = DATA.upcoming.filter((m) => m.odds);
+
+/* The gap to the market, season by season: quoted as a range, never a mean. */
+const GAPS = DATA.standing.seasons.map((s) => s.gap);
+const GAP_MIN = Math.min(...GAPS), GAP_MAX = Math.max(...GAPS);
+const N_SEASONS = GAPS.length;
+const GAP_TXT = N_SEASONS > 1
+  ? `entre ${fr(GAP_MIN)} et ${fr(GAP_MAX)} derrière le marché sur ${N_SEASONS} saisons`
+  : `${fr(GAP_MIN)} derrière le marché`;
+const GAP_SHORT = `${fr(GAP_MIN, 3)} à ${fr(GAP_MAX, 3)}`;
+
+/* ---------------- certificate ---------------- */
+function renderCert() {
+  const s = DATA.standing;
+  const last = s.seasons[s.seasons.length - 1];
+  document.getElementById("cert-id").textContent = `N° ${DATA.meta.modelHash.toUpperCase()} · T = ${DATA.meta.temperature}`;
+  document.getElementById("readings").innerHTML = `
+    <div><i>Écart au marché, log-loss</i><b class="n">${GAP_SHORT}</b></div>
+    <div><i>Constant sur</i><b class="n">${N_SEASONS} saison${N_SEASONS > 1 ? "s" : ""}</b></div>
+    <div><i>Erreur de calibration, ${esc(last.season)}</i><b class="n">${(100 * s.ece).toFixed(1)} pt</b></div>
+    <div><i>Dernière publication</i><b class="n">${esc(DATA.meta.publishedAt.slice(0, 16))}</b></div>`;
+  const nAnn = DATA.bins.reduce((a, b) => a + b.n, 0);
+  document.getElementById("diag-sub").textContent = `${s.bins_season} · ${nAnn.toLocaleString("fr-FR")} annonces`;
+
+  const W = 260, H = 240, L = 34, T = 10, R = 10, B = 30;
+  const x = (p) => L + p * (W - L - R), y = (p) => T + (1 - p) * (H - T - B);
+  const ticks = [0, .25, .5, .75, 1];
+  const bins = DATA.bins.filter((b) => b.n > 0);
+  const nmax = Math.max(...bins.map((b) => b.n));
+  document.getElementById("reliability").innerHTML = `
+    ${ticks.map((t) => `<line x1="${x(t)}" y1="${y(0)}" x2="${x(t)}" y2="${y(1)}" stroke="var(--line-soft)" />
+                         <line x1="${x(0)}" y1="${y(t)}" x2="${x(1)}" y2="${y(t)}" stroke="var(--line-soft)" />`).join("")}
+    <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(1)}" stroke="var(--ink-3)" stroke-dasharray="3 3" />
+    <line x1="${x(0)}" y1="${y(0)}" x2="${x(1)}" y2="${y(0)}" stroke="var(--ink-2)" />
+    <line x1="${x(0)}" y1="${y(0)}" x2="${x(0)}" y2="${y(1)}" stroke="var(--ink-2)" />
+    ${ticks.map((t) => `<text x="${x(t)}" y="${H - 10}" text-anchor="middle" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${p0(t)}</text>
+                         <text x="${L - 6}" y="${y(t) + 3.5}" text-anchor="end" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${p0(t)}</text>`).join("")}
+    <text x="${x(.5)}" y="${H - 0.5}" text-anchor="middle" font-size="9" fill="var(--ink-3)" letter-spacing=".08em">ANNONCÉ, %</text>
+    <text x="10" y="${y(.5)}" text-anchor="middle" font-size="9" fill="var(--ink-3)" letter-spacing=".08em" transform="rotate(-90 10 ${y(.5)})">OBSERVÉ, %</text>
+    ${bins.map((b) => `<circle cx="${x(b.predicted)}" cy="${y(b.observed)}" r="${4 + 9 * Math.sqrt(b.n / nmax)}" fill="var(--h-soft)" stroke="var(--h)" stroke-width="1.5" />`).join("")}
+    ${bins.map((b) => `<circle cx="${x(b.predicted)}" cy="${y(b.observed)}" r="1.6" fill="var(--ink)" />`).join("")}`;
+}
+
+/* ---------------- board ---------------- */
+function renderRows() {
+  const n = DATA.upcoming.length, unpriced = n - PRICED.length;
+  document.getElementById("day-sub").innerHTML = n
+    ? `${n} match${n > 1 ? "s" : ""} à venir, ${n > 1 ? "prédits" : "prédit"} et ${n > 1 ? "publiés" : "publié"} avant le coup d'envoi, dernière publication le ${esc(DATA.meta.publishedAt)}.
+       ${unpriced ? `<b>${unpriced}</b> sans cote capturée : ${unpriced > 1 ? "ils sont affichés" : "il est affiché"} mais ${unpriced > 1 ? "ne peuvent" : "ne peut"} pas entrer dans un ticket.` : "Clique sur une cote pour l'ajouter au ticket."}`
+    : `Aucun match à venir dans le registre. La prochaine publication remplira ce tableau.`;
+
+  document.getElementById("rows").innerHTML = DATA.upcoming.map((m) => {
+    const chosen = picks.get(m.id);
+    const rail = (probs, cls) => `<span class="rail ${cls}">${OUT.map((o, i) => `<i class="${o.cls}" style="width:${100 * probs[i]}%"></i>`).join("")}</span>`;
+    const pk = m.odds
+      ? `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
+          aria-label="${esc(o.name)}, cote ${m.odds[i].toFixed(2)}">
+          <b class="n">${m.odds[i].toFixed(2)}</b>
+          <span class="n"><em>${p0(m.model[i])}</em> · ${p0(m.market[i])}</span>
+        </button>`).join("")}</div>`
+      : `<div class="nopick"><span class="label">Sans cote capturée</span>${OUT.map((o, i) => `<b class="n">${p0(m.model[i])}</b>`).join("")}</div>`;
+    return `<div class="row">
+      <div class="rmain">
+        <div class="when"><b class="n">${esc(m.time || "–")}</b>${esc(m.league)}<br><em>${frDate(m.date)}</em></div>
+        <div class="fixture">
+          <div class="teams"><span>${esc(m.home)}</span><i>${m.overround === null ? "" : `MARGE ${p1(m.overround)} %`}</i><span>${esc(m.away)}</span></div>
+          <div class="rails">
+            <span class="label">Nous</span>${rail(m.model, "model")}
+            ${m.market ? `<span class="label">Marché</span>${rail(m.market, "market")}` : ""}
+          </div>
+        </div>
+        ${pk}
+        <span></span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------------- combinator ---------------- */
+function combos() {
+  const out = [];
+  const rec = (start, legs) => {
+    if (legs.length >= 2) out.push(legs.slice());
+    if (legs.length === 4) return;
+    for (let i = start; i < PRICED.length; i++)
+      for (let o = 0; o < 3; o++) { legs.push([PRICED[i].id, o]); rec(i + 1, legs); legs.pop(); }
+  };
+  rec(0, []);
+  return out.map(score);
+}
+function score(legs) {
+  let pm = 1, pq = 1, odds = 1, gap = 0;
+  for (const [id, o] of legs) {
+    const m = byId(id);
+    pm *= m.model[o]; pq *= m.market[o]; odds *= m.odds[o];
+    gap += Math.abs(m.model[o] - m.market[o]);
+  }
+  return { legs, pm, pq, odds, back: pq * odds, gap: gap / legs.length };
+}
+const ALL = combos();
+
+const WHY = {
+  target: "Parmi toutes les combinaisons à 15 % de la cote visée, celles que le marché juge les plus probables. Le marché parce qu'il est mesuré meilleur que nous.",
+  margin: "Les combinaisons où le bookmaker garde le moins : sa marge pèse plus sur les outsiders, donc ceci favorise les favoris.",
+  consensus: "Les sélections où nous et le marché disons presque la même chose. Là où nous divergeons, c'est presque toujours nous qui avons tort.",
+};
+function proposals() {
+  let pool;
+  if (objective === "target") {
+    pool = ALL.filter((c) => c.odds >= target * 0.85 && c.odds <= target * 1.15).sort((a, b) => b.pq - a.pq || b.back - a.back);
+  } else if (objective === "margin") {
+    pool = ALL.filter((c) => c.legs.length === nLegs).sort((a, b) => b.back - a.back || b.pq - a.pq);
+  } else {
+    pool = ALL.filter((c) => c.legs.length === nLegs).sort((a, b) => a.gap - b.gap || b.pq - a.pq);
+  }
+  const picked = [];
+  for (const c of pool) {
+    const sig = c.legs.map((l) => l.join(":"));
+    if (picked.some((p) => sig.filter((s) => p.sig.includes(s)).length > 1)) continue;
+    picked.push({ ...c, sig });
+    if (picked.length === 3) break;
+  }
+  return picked;
+}
+function renderProps() {
+  document.getElementById("obj-why").textContent = WHY[objective];
+  document.getElementById("ctl-target").hidden = objective !== "target";
+  document.getElementById("ctl-legs").hidden = objective === "target";
+  const el = document.getElementById("props");
+  if (PRICED.length < 2) {
+    el.innerHTML = `<div class="noprop">Il faut au moins deux matchs à venir avec une cote capturée pour proposer une combinaison. ${PRICED.length === 1 ? "Un seul en a une pour l'instant." : "Aucun n'en a pour l'instant."}</div>`;
+    return;
+  }
+  const props = proposals();
+  if (!props.length) { el.innerHTML = `<div class="noprop">Aucune combinaison de 2 à 4 sélections n'approche cette cote sur cette journée.</div>`; return; }
+  el.innerHTML = props.map((c, idx) => {
+    const keep = 1 - c.back;
+    let cum = 1;
+    const shrink = c.legs.map(([id, o]) => { cum *= byId(id).market[o]; return cum; });
+    const sig = c.sig.join("|");
+    return `<article class="prop">
+      <div class="prop-top">
+        <span class="label">${["Première", "Deuxième", "Troisième"][idx]} proposition · ${c.legs.length} sélections</span>
+        <span class="prop-odds disp"><small>COTE</small>${c.odds.toFixed(2)}</span>
+      </div>
+      <div class="legs">${c.legs.map(([id, o]) => { const m = byId(id); return `<div class="leg">
+          <i class="${OUT[o].cls}"></i>
+          <div class="lt"><b>${esc(legName(m, o))}</b><span>${esc(OUT[o].name)} · ${esc(m.home)} – ${esc(m.away)}</span></div>
+          <span class="lo n">${m.odds[o].toFixed(2)}</span>
+        </div>`; }).join("")}</div>
+      <div class="shrink" aria-hidden="true">${[1, ...shrink].map((p) => `<i style="height:${Math.max(6, 100 * p)}%"></i>`).join("")}</div>
+      <div class="prop-kv">
+        <span>Ça tombe, marché<b class="n">${p1(c.pq)} %</b></span>
+        <span>Ça tombe, nous<b class="n">${p1(c.pm)} %</b></span>
+        <span class="bad">Le bookmaker garde<b class="n">${p1(keep)} %</b></span>
+        <span class="bad">Sur 100 €, en moyenne<b class="n">${money(100 * c.back)} €</b></span>
+      </div>
+      <button type="button" class="load" data-load="${esc(sig)}" aria-pressed="${loadedProp === sig}">${loadedProp === sig ? "Sur le ticket" : "Charger sur le ticket"}</button>
+    </article>`;
+  }).join("");
+}
+
+/* ---------------- funnel ---------------- */
+function renderFunnel() {
+  const svg = document.getElementById("funnel-svg");
+  const legs = [...picks.entries()];
+  const W = 360, X0 = 118, FW = W - X0 - 6, CX = X0 + FW / 2, BH = 34, GAP = 8, TOP = 4;
+  const H = TOP + (legs.length + 1) * (BH + GAP);
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  let cq = 1, cm = 1, co = 1;
+  const steps = [{ name: "Départ", sub: "", cq, cm, co, cls: "" }];
+  for (const [id, o] of legs) {
+    const m = byId(id);
+    cq *= m.market[o]; cm *= m.model[o]; co /= m.odds[o];
+    steps.push({ name: legName(m, o), sub: `${OUT[o].short} · @${m.odds[o].toFixed(2)}`, cq, cm, co, cls: OUT[o].cls });
+  }
+  const fill = { H: "var(--h-soft)", D: "var(--d-soft)", A: "var(--a-soft)", "": "var(--panel-2)" };
+  const strokeOf = { H: "var(--h)", D: "var(--d)", A: "var(--a)", "": "var(--line)" };
+  svg.innerHTML = steps.map((s, i) => {
+    const y = TOP + i * (BH + GAP);
+    const wq = Math.max(2, FW * s.cq), wm = Math.max(2, FW * s.cm), wo = Math.max(2, FW * s.co);
+    const inside = wq > 62;
+    return `
+      <text x="${X0 - 10}" y="${y + 14}" text-anchor="end" font-size="11" font-weight="600" fill="var(--ink)" font-family="Familjen Grotesk, sans-serif">${esc(s.name.length > 17 ? s.name.slice(0, 16) + "…" : s.name)}</text>
+      <text x="${X0 - 10}" y="${y + 27}" text-anchor="end" font-size="9.5" fill="var(--ink-3)">${esc(s.sub)}</text>
+      <rect x="${CX - wq / 2}" y="${y}" width="${wq}" height="${BH}" fill="${fill[s.cls]}" stroke="${strokeOf[s.cls]}" />
+      <rect x="${CX - wm / 2}" y="${y + 5}" width="${wm}" height="${BH - 10}" fill="none" stroke="var(--ink)" stroke-width="1.5" />
+      ${i ? `<line x1="${CX - wo / 2}" y1="${y - 2}" x2="${CX - wo / 2}" y2="${y + BH + 2}" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2" />
+             <line x1="${CX + wo / 2}" y1="${y - 2}" x2="${CX + wo / 2}" y2="${y + BH + 2}" stroke="var(--stamp)" stroke-width="1.5" stroke-dasharray="3 2" />` : ""}
+      <text x="${inside ? CX : CX + wq / 2 + 6}" y="${y + BH / 2 + 4}" text-anchor="${inside ? "middle" : "start"}" font-size="11.5" font-weight="700" fill="var(--ink)" style="paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round">${p1(s.cq)} %</text>`;
+  }).join("");
+  document.getElementById("funnel-sum").textContent = legs.length
+    ? `${legs.length} sélection${legs.length > 1 ? "s" : ""} · reste ${p1(cq)} %`
+    : "Ajoute une sélection";
+}
+
+/* ---------------- ticket ---------------- */
+function renderTicket() {
+  const legs = document.getElementById("t-legs"), sums = document.getElementById("t-sums");
+  if (picks.size === 0) {
+    legs.innerHTML = `<p class="tempty">Aucune sélection.<br><br>Choisis une cote sur la journée, ou charge une proposition du combinateur. Le ticket imprimera la probabilité réelle, <b>ce que le bookmaker garde</b> et ce que tu récupères en moyenne.</p>`;
+    sums.innerHTML = "";
+    return;
+  }
+  let pm = 1, pq = 1, odds = 1;
+  const rows = [];
+  picks.forEach((out, id) => {
+    const m = byId(id);
+    pm *= m.model[out]; pq *= m.market[out]; odds *= m.odds[out];
+    const b = binOf(m.model[out]);
+    rows.push(`<div class="tleg">
+      <div class="l1"><span>${esc(m.home.toUpperCase())} – ${esc(m.away.toUpperCase())}</span>
+        <span>@${m.odds[out].toFixed(2)}<button type="button" class="kill" data-k="${m.id}" aria-label="Retirer ${esc(m.home)} – ${esc(m.away)}">×</button></span></div>
+      <div class="l2"><span>${esc(OUT[out].name)}</span><span>nous ${p1(m.model[out])} · marché ${p1(m.market[out])}</span></div>
+      <div class="l3">${b.n ? `Sur ${b.n} annonces à ${b.label} %, c'est arrivé ${p1(b.observed)} % du temps.` : `Aucune annonce mesurée dans la tranche ${b.label} %.`}</div>
+    </div>`);
+  });
+  legs.innerHTML = rows.join("");
+
+  const backQ = pq * odds, backM = pm * odds, keep = 1 - backQ, edge = backM - 1;
+  let stamp, text;
+  if (edge > 0.02) {
+    stamp = "Écart suspect";
+    text = `Ce modèle prétend un avantage de <b>${p1(edge)} %</b> là où le marché voit une perte de ${p1(keep)} %. Un écart de cette taille n'est pas une opportunité, c'est un drapeau rouge : ce modèle est mesuré <b>${GAP_TXT}</b>, donc quand ils divergent autant, c'est presque toujours lui qui se trompe.`;
+  } else if (edge > 0) {
+    stamp = "Trop serré pour trancher";
+    text = `Les deux estimations sont proches de l'équilibre, et l'écart est trop petit pour être distingué du bruit sur un modèle mesuré ${GAP_TXT}.`;
+  } else {
+    stamp = `Perte attendue ${money(STAKE * keep)} €`;
+    text = `Les deux estimations disent que tu perds. La plus crédible est celle du marché : ce modèle est mesuré moins bon que lui, ${GAP_TXT}. ${picks.size > 1 ? `Et tes ${picks.size} sélections font que le bookmaker garde <b>${p1(keep)} %</b> au lieu de la marge d'un seul match.` : ""}`;
+  }
+  sums.innerHTML = `
+    <div class="tsec">
+      <div class="trow"><span>Sélections</span><b>${picks.size}</b></div>
+      <div class="trow"><span>Cote combinée</span><b>${odds.toFixed(2)}</b></div>
+      <div class="trow"><span>Ça tombe, selon nous</span><b>${p1(pm)} %</b></div>
+      <div class="trow"><span>Ça tombe, selon le marché</span><b>${p1(pq)} %</b></div>
+      <div class="trow"><span>Ce que le bookmaker garde</span><b class="loss">${p1(keep)} %</b></div>
+    </div>
+    <div class="tsec">
+      <div class="trow"><span>Mise</span><b>${money(STAKE)} €</b></div>
+      <div class="trow"><span>Si ça passe</span><b>${money(STAKE * odds)} €</b></div>
+      <div class="trow hero"><span>Tu récupères en moyenne</span><b class="${backQ >= 1 ? "" : "loss"}">${money(STAKE * backQ)} €</b></div>
+      <div class="trow"><span>… si c'est nous qui avons raison</span><b>${money(STAKE * backM)} €</b></div>
+    </div>
+    <div class="stampbox">
+      <span class="stampmark">${esc(stamp)}</span>
+      <p class="stamptext">${text}</p>
+    </div>
+    <div class="tfoot">MODÈLE ${DATA.meta.modelHash.toUpperCase()} · T=${DATA.meta.temperature}</div>`;
+}
+
+/* ---------------- retro, bins, text ---------------- */
+function renderRetro() {
+  const rows = DATA.retro, n = rows.length;
+  const sub = document.getElementById("retro-sub"), quad = document.getElementById("retro-quad");
+  const scroll = document.getElementById("retro-scroll"), note = document.getElementById("retro-note");
+  if (!n) {
+    sub.innerHTML = `Aucune prédiction publiée n'a encore été jouée. Dès qu'une le sera, elle apparaîtra ici avec son résultat, <b>bonne ou mauvaise</b>. Une interface qui ne montre que ses bons jours ne mérite aucune confiance.`;
+    quad.hidden = true; scroll.hidden = true; note.hidden = true;
+    return;
+  }
+  quad.hidden = false; scroll.hidden = false; note.hidden = false;
+  const dates = [...new Set(rows.map((r) => r.date))];
+  sub.innerHTML = `${n} prédiction${n > 1 ? "s" : ""} publiée${n > 1 ? "s" : ""} puis jouée${n > 1 ? "s" : ""}, du ${frDate(dates[dates.length - 1])} au ${frDate(dates[0])}. Ce que le modèle annonçait avant le coup d'envoi, et ce qui est arrivé, <b>bons et mauvais jours confondus</b>.`;
+  let llm = 0, llq = 0, hm = 0, hq = 0, nq = 0;
+  const argmax = (a) => a.indexOf(Math.max(...a));
+  document.getElementById("retro-rows").innerHTML = rows.map((r) => {
+    const k = ["H", "D", "A"].indexOf(r.result);
+    llm += -Math.log(r.model[k]);
+    const om = argmax(r.model) === k;
+    if (om) hm += 1;
+    let oq = null;
+    if (r.market) { llq += -Math.log(r.market[k]); nq += 1; oq = argmax(r.market) === k; if (oq) hq += 1; }
+    const trio = (p) => p ? p.map((x) => p0(x)).join(" / ") : "–";
+    return `<tr><td>${frDate(r.date)}</td><td>${esc(r.home)} – ${esc(r.away)}</td><td class="n">${esc(r.score)}</td>
+      <td class="n">${trio(r.model)}</td><td class="n">${trio(r.market)}</td>
+      <td class="${om ? "yes" : "no"}">${om ? "oui" : "non"}</td><td class="${oq === null ? "" : (oq ? "yes" : "no")}">${oq === null ? "–" : (oq ? "oui" : "non")}</td></tr>`;
+  }).join("");
+  quad.innerHTML = `
+    <div><b class="n">${(llm / n).toFixed(4)}</b><span>Notre log-loss sur ces ${n} match${n > 1 ? "s" : ""}</span></div>
+    <div><b class="n">${nq ? (llq / nq).toFixed(4) : "–"}</b><span>Celui du marché de clôture, ${nq === n ? "mêmes matchs" : `${nq} matchs avec cote`}</span></div>
+    <div><b class="n">${hm} / ${n}</b><span>Nos favoris qui sont sortis</span></div>
+    <div><b class="n">${nq ? `${hq} / ${nq}` : "–"}</b><span>Ceux du marché</span></div>`;
+  const se = (0.55 / Math.sqrt(n)).toFixed(2);
+  note.innerHTML = `Sur ${n} match${n > 1 ? "s" : ""}, l'erreur type d'un log-loss vaut environ <b>${se.replace(".", ",")}</b>. ${n < 200 ? "Quelques journées ne disent rien, ni en bien ni en mal." : ""} Ce qui dit quelque chose, c'est le bilan en walk-forward : ${GAP_TXT}, toujours du même signe.`;
+}
+function renderBins() {
+  const s = DATA.standing;
+  document.getElementById("bins-caption").textContent = `Mesuré sur ${s.bins_season}, une saison jamais vue à l'entraînement ni à la calibration : la lire là décrirait le réglage, pas le modèle.`;
+  document.getElementById("bin-rows").innerHTML = DATA.bins.map((b) => {
+    if (!b.n) return `<tr><td>${b.label} %</td><td class="n">0</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>`;
+    const gap = 100 * (b.predicted - b.observed);
+    return `<tr><td>${b.label} %</td><td class="n">${b.n}</td><td class="n">${p1(b.predicted)} %</td><td class="n">${p1(b.observed)} %</td>
+      <td class="n ${Math.abs(gap) > 2 ? "no" : ""}">${gap > 0 ? "+" : ""}${gap.toFixed(2)}</td></tr>`;
+  }).join("");
+  document.getElementById("seasons-quad").innerHTML = s.seasons.map((r) => `
+    <div><b class="n">${r.model.toFixed(4)} <small style="font-size:12px;color:var(--ink-3)">vs ${r.market.toFixed(4)}</small></b><span>${esc(r.season)} · nous vs marché · écart ${r.gap > 0 ? "+" : ""}${r.gap.toFixed(4)}</span></div>`).join("");
+}
+function renderText() {
+  document.getElementById("wont").innerHTML = `Il ne classera pas les matchs par « confiance » et n'a pas de bouton pour miser. Ce modèle perd contre le marché de clôture ${GAP_TXT}, de façon mesurée et constante : il n'a aucun avantage à te vendre. Le combinateur cherche parmi les combinaisons possibles celle qui répond le mieux à ton objectif, et il te dit toujours ce qu'elle perd en moyenne. Quand le modèle s'écarte fortement du marché, le plus probable est qu'il se trompe, et le ticket te le dit à ce moment-là plutôt que de le taire.`;
+}
+
+/* ---------------- events ---------------- */
+function refocus(sel) { const el = sel && document.querySelector(sel); if (el) el.focus(); }
+function currentSig() { return [...picks.entries()].map(([id, o]) => `${id}:${o}`).sort().join("|"); }
+function syncLoaded() {
+  const sig = currentSig();
+  loadedProp = PRICED.length >= 2 && proposals().some((c) => [...c.sig].sort().join("|") === sig) ? sig : null;
+}
+function rerender() { syncLoaded(); renderRows(); renderFunnel(); renderTicket(); renderProps(); }
+
+document.addEventListener("click", (e) => {
+  const opt = e.target.closest("[data-m]");
+  if (opt) {
+    const id = opt.dataset.m, out = Number(opt.dataset.o);
+    picks.get(id) === out ? picks.delete(id) : picks.set(id, out);
+    rerender(); refocus(`[data-m="${id}"][data-o="${out}"]`); return;
+  }
+  const kill = e.target.closest("[data-k]");
+  if (kill) { picks.delete(kill.dataset.k); rerender(); return; }
+  const load = e.target.closest("[data-load]");
+  if (load) {
+    picks.clear();
+    for (const s of load.dataset.load.split("|")) { const [id, o] = s.split(":"); picks.set(id, Number(o)); }
+    rerender(); refocus(`[data-load="${load.dataset.load}"]`); return;
+  }
+  const ob = e.target.closest("[data-obj]");
+  if (ob) { objective = ob.dataset.obj; document.querySelectorAll("[data-obj]").forEach((b) => b.setAttribute("aria-pressed", String(b === ob))); syncLoaded(); renderProps(); return; }
+  const nl = e.target.closest("[data-n]");
+  if (nl) { nLegs = Number(nl.dataset.n); document.querySelectorAll("[data-n]").forEach((b) => b.setAttribute("aria-pressed", String(b === nl))); syncLoaded(); renderProps(); }
+});
+document.getElementById("target").addEventListener("input", (e) => {
+  target = Number(e.target.value);
+  document.getElementById("target-out").textContent = target.toFixed(1);
+  syncLoaded(); renderProps();
+});
+
+renderCert(); renderRetro(); renderBins(); renderText();
+if (PRICED.length >= 2) { const first = proposals()[0]; if (first) for (const [id, o] of first.legs) picks.set(id, o); }
+rerender();
+</script>
+</body>
+</html>

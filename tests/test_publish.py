@@ -160,3 +160,68 @@ def test_publishing_an_unplayed_fixture_does_not_read_its_own_result() -> None:
     )
     for column in FEATURE_COLUMNS:
         assert upcoming[column].to_list() == with_result[column].to_list(), column
+
+
+# ---------------- odds capture, append-only like the predictions ----------------
+
+
+@pytest.fixture(autouse=True)
+def _isolated_odds(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(pub, "ODDS_PARQUET", tmp_path / "odds.parquet")
+
+
+FEED = (
+    "﻿Div,Date,Time,HomeTeam,AwayTeam,Referee,B365H,B365D,B365A,AvgH,AvgD,AvgA\n"
+    "B1,03/09/2026,19:30,Anderlecht,Kortrijk,,1.48,4.2,5.5,1.49,4.33,5.49\n"
+    "E0,05/09/2026,15:00,Brentford,Everton,,2.1,3.4,3.6,2.08,3.42,3.55\n"
+    "SP1,06/09/2026,20:00,Sociedad,Celta,,1.95,3.6,3.8,,,\n"
+)
+
+
+def test_fetch_fixtures_keeps_kickoff_time_and_average_odds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(pub, "_download", lambda url: FEED.encode())
+    fixtures = pub.fetch_fixtures()
+    assert fixtures["league"].to_list() == ["Premier League", "La Liga"]
+    assert fixtures["kickoff_time"].to_list() == ["15:00", "20:00"]
+    assert fixtures["odds_avg_h"].to_list() == [2.08, None]
+    assert fixtures["odds_avg_a"][0] == 3.55
+
+
+def _fixture_row(day: int, home: str = "A", away: str = "B") -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "league_code": ["E0"],
+            "date": [dt.date(2026, 9, day)],
+            "home_team": [home],
+            "away_team": [away],
+            "league": ["Premier League"],
+            "kickoff_time": ["15:00"],
+            "odds_avg_h": [2.0],
+            "odds_avg_d": [3.4],
+            "odds_avg_a": [3.6],
+        }
+    )
+
+
+def test_the_first_odds_capture_creates_the_file_with_the_fixed_schema() -> None:
+    odds = pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 1, 9, 0))
+    assert odds.height == 1
+    assert list(odds.columns) == list(pub.ODDS_SCHEMA)
+    assert odds["captured_at"][0] == dt.datetime(2026, 9, 1, 9, 0)
+
+
+def test_odds_already_captured_are_never_overwritten() -> None:
+    pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 1, 9, 0))
+    later = _fixture_row(5).with_columns(pl.lit(1.5).alias("odds_avg_h"))
+    odds = pub.append_odds(later, dt.datetime(2026, 9, 2, 9, 0))
+    assert odds.height == 1
+    assert odds["odds_avg_h"][0] == 2.0
+    assert odds["captured_at"][0] == dt.datetime(2026, 9, 1, 9, 0)
+
+
+def test_a_new_fixture_grows_the_odds_history() -> None:
+    pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 1, 9, 0))
+    odds = pub.append_odds(_fixture_row(6, "C", "D"), dt.datetime(2026, 9, 2, 9, 0))
+    assert odds.height == 2
