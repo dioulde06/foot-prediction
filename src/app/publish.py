@@ -160,13 +160,28 @@ def _conform(frame: pl.DataFrame, schema: dict[str, pl.DataType]) -> pl.DataFram
     ).select([pl.col(c).cast(t) for c, t in schema.items()])
 
 
-def append_odds(fixtures: pl.DataFrame, captured_at: dt.datetime) -> pl.DataFrame:
-    """Record the odds of every priced fixture in the feed, once. Never rewrites.
+# Two prices closer than this are the same price: no new snapshot.
+ODDS_MOVED = 0.005
 
-    The first capture wins: it is the price that existed when the prediction
-    was published, which is the only one a sceptic can compare it to. A fixture
-    the market has not priced yet is skipped, not recorded as empty, so it is
-    captured on the day it gets a price.
+
+def first_odds(odds: pl.DataFrame) -> pl.DataFrame:
+    """One row per match: the first capture, the reference price."""
+    return odds.sort("captured_at").group_by(KEY, maintain_order=True).first()
+
+
+def latest_odds(odds: pl.DataFrame) -> pl.DataFrame:
+    """One row per match: the most recent capture, the price to show."""
+    return odds.sort("captured_at").group_by(KEY, maintain_order=True).last()
+
+
+def append_odds(fixtures: pl.DataFrame, captured_at: dt.datetime) -> pl.DataFrame:
+    """Record the odds of every priced fixture in the feed as snapshots. Never
+    rewrites a row.
+
+    The first capture is the reference: the price that existed when the
+    prediction was published. Every later publication adds a snapshot when the
+    market average moved, so the page can show where the price went. A fixture
+    the market has not priced yet is skipped, not recorded as empty.
     """
     PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
     rows = _conform(
@@ -182,7 +197,23 @@ def append_odds(fixtures: pl.DataFrame, captured_at: dt.datetime) -> pl.DataFram
         history = _conform(stored, ODDS_SCHEMA)
         if list(stored.columns) != list(ODDS_SCHEMA):
             history.write_parquet(ODDS_PARQUET)
-        rows = rows.join(history.select(KEY), on=KEY, how="anti")
+        last = latest_odds(history).select(
+            *KEY, *[pl.col(f"odds_avg_{o}").alias(f"last_{o}") for o in "hda"]
+        )
+        rows = (
+            rows.join(last, on=KEY, how="left")
+            .filter(
+                pl.col("last_h").is_null()
+                | pl.any_horizontal(
+                    [
+                        (pl.col(f"odds_avg_{o}") - pl.col(f"last_{o}")).abs()
+                        > ODDS_MOVED
+                        for o in "hda"
+                    ]
+                )
+            )
+            .select(list(ODDS_SCHEMA))
+        )
         if rows.is_empty():
             return history
         combined = pl.concat([history, rows])
@@ -319,9 +350,7 @@ def freeze_weekly_proposals(published_at: dt.datetime) -> None:
         return
     today = published_at.date()
     current = latest(pl.read_parquet(PREDICTIONS_PARQUET))
-    odds = _conform(pl.read_parquet(ODDS_PARQUET), ODDS_SCHEMA).unique(
-        subset=KEY, keep="first"
-    )
+    odds = latest_odds(_conform(pl.read_parquet(ODDS_PARQUET), ODDS_SCHEMA))
     frame = current.join(
         odds.select(*KEY, *[f"odds_avg_{o}" for o in "hda"]), on=KEY, how="inner"
     ).filter(

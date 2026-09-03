@@ -211,6 +211,10 @@
   .more:hover { color: var(--ink); border-color: var(--ink-3); background: var(--panel-3); }
   .more[aria-expanded="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
   @media (max-width: 720px) { .more { width: 100%; height: 30px; border-radius: var(--r-sm); } }
+  .mv { font-style: normal; font-size: 10px; margin-left: 3px; vertical-align: super; }
+  .mv.down { color: var(--stamp); } .mv.up { color: var(--good); }
+  .moveline { margin-top: 6px; font-size: 11px; color: var(--ink-3); }
+  .kv.moveline b { font-size: 11px; }
   .flash { animation: flash 900ms ease-out; }
   @keyframes flash { 0% { background: var(--a-soft); } 100% { background: transparent; } }
 
@@ -625,6 +629,7 @@
             <div><b>Fiche</b><span>Forme, buteurs probables, marchés buts. Suppose les titulaires.</span></div>
             <div><b>Cotes de</b><span>Ton bookmaker : ses prix partout, sa marge comparée aux autres. Le pari se place chez lui.</span></div>
             <div><b>Carnet</b><span>Ce que tu as vraiment misé, soldé avec les résultats. Reste dans ce navigateur.</span></div>
+          <div><b>↑ ↓</b><span>La cote a bougé depuis notre première photo. Une baisse dit que l'argent est allé là.</span></div>
           </div>
         </div>
         <div class="cert-diag">
@@ -731,6 +736,10 @@ const bookOf = (k) => BOOKS.find((b) => b.key === k);
 const bookOdds = (m, k = book) => !m.odds ? null : (k === "AVG" || !m.books || !m.books[k]) ? m.odds : m.books[k];
 const overroundOf = (m) => m.odds ? bookOdds(m).reduce((a, o) => a + 1 / o, 0) - 1 : null;
 const legOdds = (m, o) => m.odds ? bookOdds(m)[o] : 1 / m.model[o];
+/* Where the market average went since we first saw it: the sign of the move per outcome. */
+const move = (m, o) => (m.odds && m.oddsFirst && Math.abs(m.odds[o] - m.oddsFirst[o]) > 0.005) ? (m.odds[o] > m.oddsFirst[o] ? "up" : "down") : "";
+const moveLine = (m) => (m.odds && m.oddsFirst && OUT.some((_, i) => move(m, i)))
+  ? `${m.oddsFirst.map((o) => o.toFixed(2)).join(" · ")} → ${m.odds.map((o) => o.toFixed(2)).join(" · ")} depuis le ${frDate(m.oddsFirstAt.slice(0, 10))}` : "";
 const legQ = (m, o) => m.odds ? m.market[o] : m.model[o];
 
 /* ---- time ---- */
@@ -880,7 +889,7 @@ function pickButtons(m, compact) {
   }
   return `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls} ${m.odds ? "" : "fair"}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
       aria-label="${esc(o.name)}, ${m.odds ? `cote ${legOdds(m, i).toFixed(2)}` : `prix juste ${(1 / m.model[i]).toFixed(2)}`}" title="${esc(o.name)} · nous ${p0(m.model[i])} %${m.odds ? ` · marché ${p0(m.market[i])} %` : " · pas encore coté"}">
-      <b class="n">${m.odds ? "" : "≈"}${legOdds(m, i).toFixed(2)}</b>
+      <b class="n">${m.odds ? "" : "≈"}${legOdds(m, i).toFixed(2)}${move(m, i) ? `<i class="mv ${move(m, i)}" title="${move(m, i) === "up" ? "cote montée" : "cote baissée"} depuis ${m.oddsFirst[i].toFixed(2)}">${move(m, i) === "up" ? "↑" : "↓"}</i>` : ""}</b>
       ${compact ? "" : `<span class="n"><em>${p0(m.model[i])}</em>${m.odds ? ` · ${p0(m.market[i])}` : ""}</span>`}
     </button>`).join("")}</div>`;
 }
@@ -906,6 +915,7 @@ function rowDetailed(m) {
           <span class="label">Nous</span>${rail(m.model, "model")}
           ${m.market ? `<span class="label">Marché</span>${rail(m.market, "market")}` : ""}
         </div>
+        ${moveLine(m) ? `<div class="moveline">Mouvement : ${moveLine(m)}</div>` : ""}
       </div>
       ${pickButtons(m, false)}
       ${m.cards ? `<button type="button" class="more" data-d="${m.id}" aria-expanded="${open.has(m.id)}" aria-label="Fiche du match">${open.has(m.id) ? "–" : "+"}</button>` : "<span></span>"}
@@ -926,6 +936,7 @@ function drawer(m) {
         ${t.rest !== undefined && t.rest !== null ? `<div class="kv"><span>Repos depuis le dernier match</span><b class="n">${t.rest} j</b></div>` : ""}
       </div>`).join("")}
     </div>
+    ${moveLine(m) ? `<div class="kv moveline"><span>Mouvement des cotes, moyenne du marché</span><b class="n">${moveLine(m)}</b></div>` : ""}
     <div class="label dtitle">Qui peut marquer <span class="hint" title="Probabilité de marquer au moins une fois hors penalty, s'il joue 90 minutes. Ignore blessures et compos.">?</span><small>joueurs ayant joué cette saison, plus de ${DATA.meta.scorers.minMinutes} min sur deux saisons</small></div>
     <div class="dgrid">
       ${sides.map(([side, t]) => `<div><div class="sc">${t.scorers.map((p) => `<div class="scrow">

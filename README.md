@@ -312,10 +312,13 @@ celles du même match avec un 9-0 : elles sont identiques.
 d'envoi et les cotes du flux au moment de la publication : la moyenne du
 marché et six bookmakers (Bet365, Betfair, BetVictor, Bwin, Paddy Power, Sky
 Bet). Fichier séparé, lui aussi en ajout seul : le schéma du registre des
-prédictions est publié et ne bouge pas, et la première capture gagne, parce que
-c'est le prix qui existait quand la prédiction est sortie. Un match que le
+prédictions est publié et ne bouge pas. La première capture est la référence,
+le prix qui existait quand la prédiction est sortie ; chaque publication
+suivante ajoute une photo quand la moyenne du marché a bougé, et la page montre
+le mouvement (flèche sur la cote, ligne « depuis le … »). Un match que le
 marché n'a pas encore coté n'est pas enregistré vide, il est capturé le jour où
-il a un prix. Ce sont des cotes courantes, pas de clôture.
+il a un prix. Ce sont des cotes courantes, pas de clôture ; la clôture, elle,
+arrive avec le résultat et sert à la « clôture battue » du carnet.
 
 Les fenêtres glissantes de `build_features` lisent les cinq derniers matchs
 **joués** d'une équipe et donnent à chaque ligne, jouée ou non, la fenêtre

@@ -28,7 +28,9 @@ from src.app.publish import (
     ODDS_PARQUET,
     ODDS_SCHEMA,
     PREDICTIONS_PARQUET,
+    first_odds,
     latest,
+    latest_odds,
 )
 from src.app.scorers import (
     MIN_MINUTES,
@@ -213,6 +215,21 @@ def _matches(
             "away": r["away_team"],
             "model": [round(r[f"p_{k}"], 4) for k in ("home", "draw", "away")],
             "odds": None if market is None else [float(o) for o in avg],
+            "oddsFirst": (
+                [float(r[f"first_{o}"]) for o in "hda"]
+                if market is not None and r.get("first_h") is not None
+                else None
+            ),
+            "oddsFirstAt": (
+                r["first_at"].strftime("%Y-%m-%d %H:%M")
+                if market is not None and r.get("first_at") is not None
+                else None
+            ),
+            "oddsAt": (
+                r["captured_at"].strftime("%Y-%m-%d %H:%M")
+                if market is not None and r.get("captured_at") is not None
+                else None
+            ),
             "market": market,
             "overround": overround,
             "books": books,
@@ -398,12 +415,25 @@ def build_data(
     if proposals is None:
         proposals = pl.DataFrame(schema=PROPOSALS_SCHEMA)
     current = latest(predictions)
-    joined = (
-        current.join(
-            odds.drop("league", "captured_at").unique(subset=KEY, keep="first"),
-            on=KEY,
-            how="left",
+    shown = latest_odds(odds).drop("league") if odds.height else odds.drop("league")
+    reference = (
+        first_odds(odds).select(
+            *KEY,
+            pl.col("captured_at").alias("first_at"),
+            *[pl.col(f"odds_avg_{o}").alias(f"first_{o}") for o in "hda"],
         )
+        if odds.height
+        else pl.DataFrame(
+            schema={
+                **{k: v for k, v in ODDS_SCHEMA.items() if k in KEY},
+                "first_at": pl.Datetime("us"),
+                **{f"first_{o}": pl.Float64() for o in "hda"},
+            }
+        )
+    )
+    joined = (
+        current.join(shown, on=KEY, how="left")
+        .join(reference, on=KEY, how="left")
         .join(schedule.select(*KEY, "kickoff_utc"), on=KEY, how="left")
         .join(
             played.select(

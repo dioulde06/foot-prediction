@@ -219,13 +219,20 @@ def test_the_first_odds_capture_creates_the_file_with_the_fixed_schema() -> None
     assert odds["captured_at"][0] == dt.datetime(2026, 9, 1, 9, 0)
 
 
-def test_odds_already_captured_are_never_overwritten() -> None:
+def test_a_moved_price_adds_a_snapshot_and_the_first_one_stands() -> None:
     pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 1, 9, 0))
     later = _fixture_row(5).with_columns(pl.lit(1.5).alias("odds_avg_h"))
     odds = pub.append_odds(later, dt.datetime(2026, 9, 2, 9, 0))
+    assert odds.height == 2
+    assert odds.sort("captured_at")["odds_avg_h"].to_list() == [2.0, 1.5]
+    assert pub.first_odds(odds)["odds_avg_h"][0] == 2.0
+    assert pub.latest_odds(odds)["odds_avg_h"][0] == 1.5
+
+
+def test_an_unchanged_price_adds_no_snapshot() -> None:
+    pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 1, 9, 0))
+    odds = pub.append_odds(_fixture_row(5), dt.datetime(2026, 9, 2, 9, 0))
     assert odds.height == 1
-    assert odds["odds_avg_h"][0] == 2.0
-    assert odds["captured_at"][0] == dt.datetime(2026, 9, 1, 9, 0)
 
 
 def test_a_new_fixture_grows_the_odds_history() -> None:

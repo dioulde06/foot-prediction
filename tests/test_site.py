@@ -327,3 +327,17 @@ def test_a_played_match_carries_its_closing_odds_and_cards_carry_rest_days() -> 
         predictions=_predictions(5), odds=_odds(5), played=played, scorers=_scorers(5)
     )
     assert data["upcoming"][0]["cards"]["home"]["rest"] == 3
+
+
+def test_the_page_shows_the_latest_price_and_remembers_the_first() -> None:
+    first = _odds(5)
+    later = _odds(5).with_columns(
+        pl.lit(dt.datetime(2026, 9, 2, 9, 0))
+        .cast(pl.Datetime("us"))
+        .alias("captured_at"),
+        pl.lit(1.8).alias("odds_avg_h"),
+    )
+    (match,) = build(odds=pl.concat([first, later]))["upcoming"]
+    assert match["odds"][0] == 1.8
+    assert match["oddsFirst"] == [2.0, 3.4, 3.6]
+    assert match["oddsFirstAt"] == "2026-09-01 09:00"
