@@ -150,3 +150,65 @@ def test_the_page_is_json_serialisable_and_the_placeholder_is_filled() -> None:
     html = site.render("<script>const DATA = __DATA__;</script>", data)
     assert "__DATA__" not in html
     assert json.loads(html.split("const DATA = ")[1].split(";</script>")[0])["upcoming"]
+
+
+def _scorers(day: int) -> pl.DataFrame:
+    from src.app.scorers import SCORERS_SCHEMA
+
+    def side(name: str, team: str, lam: float) -> dict[str, list[object]]:
+        return {
+            "published_at": [dt.datetime(2026, 9, 1, 12, 0)] * 2,
+            "date": [dt.date(2026, 9, day)] * 2,
+            "home_team": [f"H{day}"] * 2,
+            "away_team": [f"A{day}"] * 2,
+            "side": [name] * 2,
+            "team": [team] * 2,
+            "player": [f"{team} striker", f"{team} winger"],
+            "position": ["F S", "F M S"],
+            "minutes": [2000, 1500],
+            "np_goals": [10, 4],
+            "np_xg": [9.0, 5.0],
+            "shots": [60, 30],
+            "rate": [0.4, 0.3],
+            "p_scores": [0.35, 0.25],
+            "lambda_np": [lam] * 2,
+            "lambda_total": [lam + 0.12] * 2,
+            "elo": [1550.0] * 2,
+            "form_points_5": [1.8] * 2,
+            "goals_scored_5": [1.6] * 2,
+            "goals_conceded_5": [1.0] * 2,
+            "np_xg_created_5": [1.4] * 2,
+            "np_xg_conceded_5": [1.1] * 2,
+        }
+
+    home = pl.DataFrame(side("home", f"H{day}", 1.5), schema=SCORERS_SCHEMA)
+    away = pl.DataFrame(side("away", f"A{day}", 1.0), schema=SCORERS_SCHEMA)
+    return pl.concat([home, away])
+
+
+def test_frozen_scorers_become_the_match_cards() -> None:
+    data = site.build_data(
+        _predictions(5),
+        _odds(5),
+        _played(1),
+        _oos(),
+        today=dt.date(2026, 9, 3),
+        scorers=_scorers(5),
+    )
+    (match,) = data["upcoming"]
+    cards = match["cards"]
+    assert cards["home"]["team"] == "H5"
+    assert [p["player"] for p in cards["home"]["scorers"]] == [
+        "H5 striker",
+        "H5 winger",
+    ]
+    assert cards["home"]["points5"] == 9.0
+    assert cards["lambdaHome"] == 1.62 and cards["lambdaAway"] == 1.12
+    assert 0 < cards["btts"] < 1 and 0 < cards["over25"] < 1
+
+
+def test_a_match_without_frozen_scorers_has_no_cards() -> None:
+    data = site.build_data(
+        _predictions(5), _odds(5), _played(), _oos(), today=dt.date(2026, 9, 3)
+    )
+    assert data["upcoming"][0]["cards"] is None

@@ -446,6 +446,7 @@ const OUT = [
 ];
 const STAKE = 100;
 const picks = new Map();
+const open = new Set();
 let objective = "target", target = 6, nLegs = 3, loadedProp = null;
 
 const p1 = (x) => (100 * x).toFixed(1);
@@ -529,10 +530,56 @@ function renderRows() {
           </div>
         </div>
         ${pk}
-        <span></span>
+        ${m.cards ? `<button type="button" class="more" data-d="${m.id}" aria-expanded="${open.has(m.id)}" aria-label="Détails : forme, buteurs probables et marchés buts">${open.has(m.id) ? "–" : "+"}</button>` : "<span></span>"}
       </div>
+      ${m.cards ? `<div class="drawer ${open.has(m.id) ? "on" : ""}">${drawer(m)}</div>` : ""}
     </div>`;
   }).join("");
+}
+
+function drawer(m) {
+  const c = m.cards;
+  const sides = [["Domicile", c.home], ["Extérieur", c.away]];
+  const meta = DATA.meta.scorers;
+  return `
+    <div class="label dtitle">Les deux équipes, sur leurs cinq derniers matchs</div>
+    <div class="dgrid">
+      ${sides.map(([side, t]) => `<div>
+        <div class="tteam">${esc(t.team)}<em>${side} · Elo ${t.elo}</em></div>
+        <div class="kv"><span>Forme</span><span class="pills">${t.form.map((f) => `<i class="${f}">${f}</i>`).join("")}</span></div>
+        <div class="kv"><span>Points pris</span><b class="n">${t.points5} / 15</b></div>
+        <div class="kv"><span>Buts marqués / encaissés, par match</span><b class="n">${t.gf.toFixed(2)} · ${t.ga.toFixed(2)}</b></div>
+        <div class="kv"><span>Occasions créées / concédées, xG hors penalty</span><b class="n">${t.xf.toFixed(2)} · ${t.xa.toFixed(2)}</b></div>
+        <div class="kv"><span>Écart de finition sur 5 matchs</span><b class="n">${(5 * (t.gf - t.xf)) > 0 ? "+" : ""}${(5 * (t.gf - t.xf)).toFixed(1)}</b></div>
+      </div>`).join("")}
+    </div>
+    <div class="label dtitle">Qui peut marquer</div>
+    <div class="dgrid">
+      ${sides.map(([side, t]) => `<div>
+        <div class="tteam">${esc(t.team)}<em>${side}</em></div>
+        <div class="sc">${t.scorers.map((p) => `<div class="scrow">
+            <span class="scname">${esc(p.player)}<em>${p.np_goals} buts / ${p.np_xg} attendus</em></span>
+            <span class="scmeter"><i style="width:${Math.min(100, 100 * p.p_scores / 0.45)}%"></i></span>
+            <span class="scpct n">${p0(p.p_scores)} %</span>
+          </div>`).join("")}</div>
+      </div>`).join("")}
+    </div>
+    <div class="label dtitle">Marchés buts</div>
+    <div class="goals">
+      <div class="gcell"><b class="n">${c.lambdaHome.toFixed(2)} – ${c.lambdaAway.toFixed(2)}</b><span>Buts attendus</span></div>
+      <div class="gcell"><b class="n">${p0(c.btts)} %</b><span>Les deux marquent</span></div>
+      <div class="gcell"><b class="n">${p0(c.over25)} %</b><span>Plus de 2,5 buts</span></div>
+      <div class="gcell"><b class="n">${p0(1 - c.over25)} %</b><span>Moins de 2,5 buts</span></div>
+    </div>
+    <p class="caveat">
+      « Qui peut marquer » est la probabilité qu'un joueur marque au moins une fois hors penalty : son rythme
+      d'xG par 90 minutes sur cette saison et la précédente, rétréci vers la moyenne de la ligue avec le poids
+      de ${meta.priorMatches} matchs, puis recalé sur ce match. Seuls les joueurs à plus de ${meta.minMinutes} minutes
+      sont retenus. Ce calcul <b>suppose que le joueur démarre et joue 90 minutes</b> et ignore blessures,
+      suspensions et rotations. Un joueur transféré cet été apparaît sous son nouveau club dès qu'il y a joué.
+      Les marchés buts sont une estimation de Poisson figée à la publication, <b>pas des probabilités validées
+      comme le 1X2</b>.
+    </p>`;
 }
 
 /* ---------------- combinator ---------------- */
@@ -778,6 +825,8 @@ document.addEventListener("click", (e) => {
   }
   const kill = e.target.closest("[data-k]");
   if (kill) { picks.delete(kill.dataset.k); rerender(); return; }
+  const more = e.target.closest("[data-d]");
+  if (more) { const id = more.dataset.d; open.has(id) ? open.delete(id) : open.add(id); renderRows(); refocus(`[data-d="${id}"]`); return; }
   const load = e.target.closest("[data-load]");
   if (load) {
     picks.clear();

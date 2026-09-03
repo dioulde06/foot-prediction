@@ -20,7 +20,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
 | 5 | Validation walk-forward | fait — stable sur 4 saisons ; test d'information : le modèle n'apporte rien au marché |
 | 6 | App de publication et suivi | fait — `make publish` / `make track` |
-| 7 | Site statique | v1 faite — `make site`, combinateur, entonnoir, ticket ; buteurs et automatisation à venir |
+| 7 | Site statique | fait — `make site` : combinateur, entonnoir, ticket, buteurs probables et marchés buts ; automatisation à venir |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
 dans [`PLAN.md`](PLAN.md).
@@ -66,7 +66,7 @@ make lint      # ruff + mypy strict
 make train     # entraîne, calibre, écrit reports/model_report.md
 make eval      # walk-forward + saturation de l'historique
 make information  # le modèle sait-il quelque chose que le marché ignore ?
-make publish   # prédit les matchs à venir, append-only, et capture leurs cotes
+make publish   # prédit les matchs à venir, append-only ; capture cotes et buteurs
 make site      # génère site/index.html depuis les parquets suivis dans git
 make track     # calibration des prédictions publiées, une fois jouées
 
@@ -87,7 +87,8 @@ src/
   features/   build.py (build_features), elo.py
   models/     train.py, calibrate.py
   eval/       metrics.py, baselines.py, splits.py, report.py, walk_forward.py
-  app/        publish.py — publication, capture des cotes, réconciliation
+  app/        publish.py — publication, capture des cotes, buteurs figés, réconciliation
+              scorers.py — buts attendus par équipe, buteurs probables, marchés buts
               site.py — génération du site statique ; templates/index.html
 configs/      lightgbm.yaml
 scripts/      run_baselines, train_and_report, run_walk_forward, publish,
@@ -96,11 +97,12 @@ tests/
 notebooks/    analyses exécutées, suivies dans git
 predictions/  predictions.parquet, historique append-only des prédictions publiées
               odds.parquet, cotes capturées à la publication, append-only aussi
+              scorers.parquet, buteurs probables et buts attendus figés à la publication
 site/         index.html généré par `make site`, servi tel quel
 reports/
   figures/    figures exportées en PNG
 data/
-  raw/        parquet brut par source (gitignoré)
+  raw/        parquet brut par source, dont understat_players.parquet (gitignoré)
   processed/  dataset joint (gitignoré)
 models/       modèle entraîné et métadonnées (gitignoré)
 ```
@@ -329,8 +331,38 @@ entre-temps. Tout ce qu'elle calcule tourne dans le navigateur :
   marché saison par saison viennent tous des parquets.
 
 Un match publié sans cote capturée est affiché mais ne peut pas entrer dans un
-ticket. Les buteurs probables et la publication automatique ne sont pas encore
-là.
+ticket. La publication automatique n'est pas encore là.
+
+### Les buteurs probables
+
+Le bouton « + » d'un match ouvre sa fiche : forme et chiffres des deux
+équipes sur cinq matchs, les cinq buteurs les plus probables de chaque côté,
+et les marchés buts. Tout vient de `predictions/scorers.parquet`, écrit par
+`make publish` au même moment que la prédiction, en ajout seul lui aussi, pour
+que l'estimation soit figée avant le coup d'envoi et vérifiable après.
+
+Le calcul, dans `src/app/scorers.py`, a deux étages volontairement simples :
+
+- **L'équipe.** Buts attendus hors penalty de chaque côté : moyenne
+  géométrique de ce que l'attaque crée et de ce que la défense adverse
+  concède, sur la fenêtre de cinq matchs que `build_features` calcule déjà,
+  répartie par le facteur domicile du dataset (1.23). Les penalties reviennent
+  au taux moyen mesuré (0.12 xG par équipe et par match). Buts en Poisson,
+  d'où « les deux marquent » et « plus de 2,5 buts ».
+- **Le joueur.** Son xG hors penalty par 90 minutes, cumulé sur la saison en
+  cours et la précédente (Understat, `src/data/players.py`, mapping
+  d'équipes explicite comme partout), rétréci vers le taux moyen de la ligue
+  avec le poids de 8 matchs, puis multiplié par le rapport entre les buts
+  attendus de ce match et la moyenne de son équipe. Probabilité de marquer au
+  moins une fois : `1 − exp(−cela)`. Joueurs à plus de 900 minutes seulement,
+  gardiens exclus. Un joueur transféré apparaît sous son nouveau club dès
+  qu'il y a joué.
+
+Ces probabilités **ne sont pas validées comme le 1X2** : elles supposent que le
+joueur démarre et joue 90 minutes, ignorent blessures, suspensions et
+rotations, et n'ont pas encore été mesurées face aux buteurs réels. Le site le
+dit à côté des chiffres. Les mesurer est la suite logique, une fois assez de
+matchs publiés joués.
 
 ## Rapports générés
 

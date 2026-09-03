@@ -19,6 +19,13 @@ import numpy as np
 import polars as pl
 
 from src.app.publish import ODDS_PARQUET, ODDS_SCHEMA, PREDICTIONS_PARQUET
+from src.app.scorers import (
+    MIN_MINUTES,
+    PRIOR_MINUTES,
+    SCORERS_PARQUET,
+    SCORERS_SCHEMA,
+    goal_markets,
+)
 from src.eval.baselines import devig_power
 from src.eval.metrics import (
     BIN_LABELS,
@@ -76,6 +83,72 @@ def _upcoming(joined: pl.DataFrame, today: dt.date) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _form(played: pl.DataFrame, team: str, before: dt.date, n: int = 5) -> list[str]:
+    """Last n results of `team` before `before`, oldest first, as V / N / D."""
+    rows = (
+        played.filter(
+            ((pl.col("home_team") == team) | (pl.col("away_team") == team))
+            & (pl.col("date") < before)
+        )
+        .sort("date")
+        .tail(n)
+    )
+    out = []
+    for r in rows.iter_rows(named=True):
+        mine = r["home_goals"] if r["home_team"] == team else r["away_goals"]
+        theirs = r["away_goals"] if r["home_team"] == team else r["home_goals"]
+        out.append("V" if mine > theirs else "N" if mine == theirs else "D")
+    return out
+
+
+def _cards(
+    match: dict[str, Any], scorers: pl.DataFrame, played: pl.DataFrame
+) -> dict[str, Any] | None:
+    rows = scorers.filter(
+        (pl.col("date") == dt.date.fromisoformat(match["date"]))
+        & (pl.col("home_team") == match["home"])
+        & (pl.col("away_team") == match["away"])
+    )
+    if rows.is_empty():
+        return None
+    sides: dict[str, Any] = {}
+    lam: dict[str, float] = {}
+    for side in ("home", "away"):
+        part = rows.filter(pl.col("side") == side).sort("p_scores", descending=True)
+        if part.is_empty():
+            return None
+        team = part.row(0, named=True)
+        lam[side] = team["lambda_total"]
+        sides[side] = {
+            "team": team["team"],
+            "elo": round(team["elo"]),
+            "form": _form(played, team["team"], dt.date.fromisoformat(match["date"])),
+            "points5": round(5 * team["form_points_5"], 1),
+            "gf": round(team["goals_scored_5"], 2),
+            "ga": round(team["goals_conceded_5"], 2),
+            "xf": round(team["np_xg_created_5"], 2),
+            "xa": round(team["np_xg_conceded_5"], 2),
+            "scorers": [
+                {
+                    "player": r["player"],
+                    "np_goals": r["np_goals"],
+                    "np_xg": round(r["np_xg"], 1),
+                    "minutes": r["minutes"],
+                    "p_scores": round(r["p_scores"], 4),
+                }
+                for r in part.iter_rows(named=True)
+            ],
+        }
+    markets = goal_markets(lam["home"], lam["away"])
+    return {
+        **sides,
+        "lambdaHome": round(lam["home"], 2),
+        "lambdaAway": round(lam["away"], 2),
+        "btts": round(markets["btts"], 4),
+        "over25": round(markets["over25"], 4),
+    }
 
 
 def _retro(joined: pl.DataFrame) -> list[dict[str, Any]]:
@@ -148,8 +221,11 @@ def build_data(
     played: pl.DataFrame,
     oos: pl.DataFrame,
     today: dt.date,
+    scorers: pl.DataFrame | None = None,
 ) -> dict[str, Any]:
     """Everything the page needs, as plain JSON-ready values."""
+    if scorers is None:
+        scorers = pl.DataFrame(schema=SCORERS_SCHEMA)
     if predictions.is_empty():
         raise ValueError("no published predictions; run `make publish` first")
     joined = predictions.join(
@@ -169,6 +245,9 @@ def build_data(
     )
     latest = predictions.sort("published_at").row(-1, named=True)
     standing, bins = _standing(oos)
+    upcoming = _upcoming(joined, today)
+    for match in upcoming:
+        match["cards"] = _cards(match, scorers, played)
     return {
         "meta": {
             "publishedAt": latest["published_at"].strftime("%Y-%m-%d %H:%M UTC"),
@@ -176,8 +255,9 @@ def build_data(
             "modelHash": latest["model_hash"],
             "temperature": round(latest["temperature"], 4),
             "nPublished": predictions.height,
+            "scorers": {"minMinutes": MIN_MINUTES, "priorMatches": PRIOR_MINUTES // 90},
         },
-        "upcoming": _upcoming(joined, today),
+        "upcoming": upcoming,
         "retro": _retro(joined),
         "standing": standing,
         "bins": bins,
@@ -201,12 +281,18 @@ def main() -> Path:
         if ODDS_PARQUET.exists()
         else pl.DataFrame(schema=ODDS_SCHEMA)
     )
+    scorers = (
+        pl.read_parquet(SCORERS_PARQUET)
+        if SCORERS_PARQUET.exists()
+        else pl.DataFrame(schema=SCORERS_SCHEMA)
+    )
     data = build_data(
         pl.read_parquet(PREDICTIONS_PARQUET),
         odds,
         pl.read_parquet(MATCHES_PARQUET),
         pl.read_parquet(OOS_PARQUET),
         dt.datetime.now(dt.UTC).date(),
+        scorers,
     )
     SITE_DIR.mkdir(parents=True, exist_ok=True)
     out = SITE_DIR / "index.html"

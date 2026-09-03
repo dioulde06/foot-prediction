@@ -27,7 +27,9 @@ import lightgbm as lgb
 import numpy as np
 import polars as pl
 
+from src.app.scorers import GoalsPrior, append_scorers, scorers_for_fixtures
 from src.data.fetch import LEAGUES, _download, season_of
+from src.data.players import fetch_players
 from src.eval.metrics import CLASSES, Probs
 from src.features.build import FEATURE_COLUMNS, build_features
 from src.models.calibrate import TemperatureScaler
@@ -243,8 +245,25 @@ def publish(
     rows = rows.with_columns(pl.lit(payload).alias("payload_sha256")).select(
         list(SCHEMA)
     )
+    history = append(rows)
+    freeze_scorers(features, fixtures, published_at)
+    return history
 
-    return append(rows)
+
+def freeze_scorers(
+    features: pl.DataFrame, fixtures: pl.DataFrame, published_at: dt.datetime
+) -> pl.DataFrame:
+    """Probable scorers for the same fixtures, frozen next to the predictions.
+
+    Player stats are refreshed at every publication (the current season moves
+    every week) over the current season and the one before, so a summer
+    transfer shows under his new club as soon as he has played for it.
+    """
+    played = pl.read_parquet(MATCHES_PARQUET)
+    current = int(season_of(published_at.date())[:4])
+    players = fetch_players([current - 1, current], force=True)
+    prior = GoalsPrior.from_data(played, players)
+    return append_scorers(scorers_for_fixtures(features, players, prior), published_at)
 
 
 def append(rows: pl.DataFrame) -> pl.DataFrame:

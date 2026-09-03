@@ -38,6 +38,9 @@ UNDERSTAT_TO_CANONICAL: dict[str, str] = {
     "VfB Stuttgart": "Stuttgart",
     # La Liga
     "Athletic Club": "Ath Bilbao",
+    # Promoted for 2026-27; both spellings read off the two sources' 2026-27 files.
+    "Deportivo La Coruna": "La Coruna",
+    "Racing Santander": "Santander",
     "Atletico Madrid": "Ath Madrid",
     "Celta Vigo": "Celta",
     "Espanyol": "Espanol",
