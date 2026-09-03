@@ -185,10 +185,10 @@
   .teams i { font-style: normal; font-family: "Sometype Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--ink-3); letter-spacing: .1em; flex: none; padding: 0 4px; }
   .rails { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 3px 8px; margin-top: 8px; align-items: center; }
   .rails .label { font-size: 9.5px; text-align: right; }
-  .rail { display: flex; gap: 2px; height: 10px; }
-  .rail i { display: block; height: 100%; border-radius: 1px; }
-  .rail.market i { opacity: .38; }
-  .rail i.H { background: var(--h); } .rail i.D { background: var(--d); } .rail i.A { background: var(--a); }
+  .prail { display: flex; gap: 2px; height: 10px; }
+  .prail i { display: block; height: 100%; border-radius: 1px; }
+  .prail.market i { opacity: .38; }
+  .prail i.H { background: var(--h); } .prail i.D { background: var(--d); } .prail i.A { background: var(--a); }
   .picks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; position: relative; }
   .pick { appearance: none; background: var(--panel-2); border: 1px solid var(--line-soft); border-top: 3px solid var(--line); border-radius: var(--r-sm); padding: 6px 6px 5px; text-align: center; display: flex; flex-direction: column; gap: 2px; line-height: 1.1; transition: transform 120ms ease, background 120ms ease, border-color 120ms ease; }
   .pick.H { border-top-color: var(--h); } .pick.D { border-top-color: var(--d); } .pick.A { border-top-color: var(--a); }
@@ -856,7 +856,7 @@ function rowCompact(m) {
   </div>`;
 }
 function rowDetailed(m) {
-  const rail = (probs, cls) => `<span class="rail ${cls}">${OUT.map((o, i) => `<i class="${o.cls}" style="width:${100 * probs[i]}%"></i>`).join("")}</span>`;
+  const rail = (probs, cls) => `<span class="prail ${cls}">${OUT.map((o, i) => `<i class="${o.cls}" style="width:${100 * probs[i]}%"></i>`).join("")}</span>`;
   return `<div class="row ${picks.has(m.id) ? "picked" : ""}">
     <div class="rmain">
       <div class="when"><b class="n">${timeLocal(m)}</b><span>${esc(m.league)}</span><em>${frDate(m.date)}</em>${countdown(m) ? `<em class="cd">${countdown(m)}</em>` : ""}</div>
