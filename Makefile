@@ -1,4 +1,4 @@
-.PHONY: install lint test fetch merge audit-teams baselines train eval information publish site track
+.PHONY: install lint test fetch fetch-current merge audit-teams baselines train eval information publish site track
 
 install:
 	uv sync
@@ -14,6 +14,10 @@ test:
 # Odds + results from football-data.co.uk. FORCE=1 to refetch.
 fetch:
 	uv run python -m src.data.fetch $(if $(FORCE),--force,)
+
+# Only the season being played, then the merged dataset. What the daily job runs.
+fetch-current:
+	uv run python -m src.data.fetch --current
 
 # Join the sources into data/processed/matches.parquet.
 merge:

@@ -11,7 +11,7 @@ from pathlib import Path
 import polars as pl
 
 from src.eval.information import information_test, season_predictions
-from src.eval.walk_forward import prepare, season_order
+from src.eval.walk_forward import complete_seasons, prepare
 from src.models.train import load_config
 
 LOG = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ def main() -> None:
     features, odds = prepare()
     config = load_config()
     frames = []
-    for season in season_order(features)[2:]:
+    for season in complete_seasons(features)[2:]:
         LOG.info("--- out-of-sample predictions for %s ---", season)
         frames.append(season_predictions(features, odds, season, config))
     predictions = pl.concat(frames)

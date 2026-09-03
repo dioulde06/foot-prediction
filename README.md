@@ -20,7 +20,8 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
 | 5 | Validation walk-forward | fait — stable sur 4 saisons ; test d'information : le modèle n'apporte rien au marché |
 | 6 | App de publication et suivi | fait — `make publish` / `make track` |
-| 7 | Site statique | fait — `make site` : combinateur, entonnoir, ticket, buteurs probables et marchés buts ; automatisation à venir |
+| 7 | Site statique | fait — `make site` : combinateur, entonnoir, ticket, buteurs probables et marchés buts |
+| 8 | Publication automatique | fait — GitHub Actions deux fois par jour, GitHub Pages |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
 dans [`PLAN.md`](PLAN.md).
@@ -61,6 +62,7 @@ navigateur. Tout ce qu'il apporterait encore est déjà couvert par Understat.
 ```bash
 make install   # uv sync
 make fetch     # télécharge les données (FORCE=1 pour ignorer le cache)
+make fetch-current  # rafraîchit la saison en cours seulement, puis rejoint
 make test      # pytest
 make lint      # ruff + mypy strict
 make train     # entraîne, calibre, écrit reports/model_report.md
@@ -102,9 +104,10 @@ site/         index.html généré par `make site`, servi tel quel
 reports/
   figures/    figures exportées en PNG
 data/
-  raw/        parquet brut par source, dont understat_players.parquet (gitignoré)
-  processed/  dataset joint (gitignoré)
-models/       modèle entraîné et métadonnées (gitignoré)
+  raw/        parquet brut par source, dont understat_players.parquet
+  processed/  dataset joint
+models/       modèle entraîné et métadonnées
+.github/workflows/publish.yml   le robot de publication
 ```
 
 `src/app/` et `configs/` ne figurent pas dans la structure décrite par
@@ -331,7 +334,37 @@ entre-temps. Tout ce qu'elle calcule tourne dans le navigateur :
   marché saison par saison viennent tous des parquets.
 
 Un match publié sans cote capturée est affiché mais ne peut pas entrer dans un
-ticket. La publication automatique n'est pas encore là.
+ticket.
+
+## La publication automatique
+
+Personne ne tape `make publish`. Le workflow `.github/workflows/publish.yml`
+tourne deux fois par jour (7h et 16h UTC, ou à la main depuis l'onglet
+Actions) : il rafraîchit la saison en cours, publie, régénère le site, commite
+ce qui a changé dans `data/`, `predictions/` et `site/` sous l'identité du
+robot, puis déploie `site/` sur GitHub Pages. Chaque passage est idempotent :
+un match déjà publié n'est jamais republié, une cote ou un buteur déjà capturé
+n'est jamais réécrit. Le commit du robot horodate l'antériorité mieux qu'un
+commit fait à la main.
+
+Pour que ça tourne, `data/`, `models/` et `predictions/` sont versionnés : le
+robot ne reconstruit rien, il ne fait que l'incrément du jour. Côté réglages
+du dépôt, GitHub Pages doit avoir « GitHub Actions » comme source.
+
+### La saison glissante
+
+La dernière saison ingérée se déduit du calendrier (coupure en juillet), plus
+d'une constante. `make fetch-current` retélécharge uniquement la saison en
+cours, cinq fichiers football-data et cinq pages Understat, remplace ses lignes
+dans les parquets bruts et rejoint. Les saisons passées ne sont jamais
+réécrites. Un match de la saison en cours dont Understat n'a pas encore publié
+le xG est laissé de côté jusqu'au passage suivant, plutôt que d'entrer avec des
+trous.
+
+Le split d'entraînement est fixé par saisons nommées, donc le dataset qui
+grossit ne change ni le modèle, ni le rapport, ni les baselines. Le
+walk-forward, lui, ignore la saison incomplète : une demi-saison ne dit rien
+sur la stabilité.
 
 ### Les buteurs probables
 

@@ -1,0 +1,58 @@
+{
+  "features": [
+    "elo_diff",
+    "form_points_diff_5",
+    "goals_scored_diff_5",
+    "goals_conceded_diff_5",
+    "shots_target_diff_5",
+    "np_xg_created_diff_5",
+    "np_xg_conceded_diff_5",
+    "rest_days_diff"
+  ],
+  "train_seasons": [
+    "2020-21",
+    "2021-22",
+    "2022-23",
+    "2023-24"
+  ],
+  "valid_season": "2024-25",
+  "test_season": "2025-26",
+  "train_dates": [
+    "2020-08-21",
+    "2024-06-02"
+  ],
+  "valid_dates": [
+    "2024-08-15",
+    "2025-05-25"
+  ],
+  "n_train": 7230,
+  "n_valid": 1752,
+  "best_iteration": 131,
+  "valid_log_loss": 0.988626,
+  "config": {
+    "params": {
+      "objective": "multiclass",
+      "num_class": 3,
+      "metric": "multi_logloss",
+      "learning_rate": 0.03,
+      "num_leaves": 15,
+      "max_depth": 4,
+      "min_data_in_leaf": 120,
+      "feature_fraction": 0.8,
+      "bagging_fraction": 0.8,
+      "bagging_freq": 1,
+      "lambda_l2": 5.0,
+      "verbose": -1,
+      "num_threads": 4,
+      "seed": 42,
+      "deterministic": true
+    },
+    "training": {
+      "num_boost_round": 3000,
+      "early_stopping_rounds": 150,
+      "half_life_seasons": 2.0
+    }
+  },
+  "dataset_hash": "06819a758ab91c1e",
+  "temperature": 1.036311
+}

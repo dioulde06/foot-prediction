@@ -1,5 +1,3 @@
-/data/
-/models/
 .venv/
 __pycache__/
 *.py[cod]

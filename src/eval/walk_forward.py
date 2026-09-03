@@ -51,6 +51,19 @@ def season_order(frame: pl.DataFrame) -> list[str]:
     )
 
 
+# A season with fewer matches than this share of the fullest one is still being
+# played. It is never a test season: half a season says nothing about stability.
+COMPLETE_SHARE = 0.9
+
+
+def complete_seasons(frame: pl.DataFrame) -> list[str]:
+    """Seasons in chronological order, minus the one still being played."""
+    counts = frame.group_by("season").len()
+    floor = COMPLETE_SHARE * float(counts["len"].to_numpy().max())
+    full = set(counts.filter(pl.col("len") >= floor)["season"].to_list())
+    return [s for s in season_order(frame) if s in full]
+
+
 def prepare(matches: pl.DataFrame | None = None) -> tuple[pl.DataFrame, pl.DataFrame]:
     """Features and the odds needed for the market comparison.
 
@@ -130,8 +143,7 @@ def walk_forward(
     test_seasons: list[str] | None = None,
     n_train_seasons: int | None = None,
 ) -> pl.DataFrame:
-    seasons = season_order(features)
-    targets = test_seasons or seasons[2:]
+    targets = test_seasons or complete_seasons(features)[2:]
     config = load_config()
     rows = []
     for season in targets:

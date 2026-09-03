@@ -16,9 +16,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 from src.eval.walk_forward import (  # noqa: E402
+    complete_seasons,
     prepare,
     saturation,
-    season_order,
     walk_forward,
 )
 
@@ -232,7 +232,7 @@ def main() -> None:
 
     FIGDIR.mkdir(parents=True, exist_ok=True)
     features, odds = prepare()
-    seasons = season_order(features)
+    seasons = complete_seasons(features)
 
     stability = walk_forward(features, odds)
     sweep = (

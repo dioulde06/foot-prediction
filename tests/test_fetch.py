@@ -44,7 +44,7 @@ def test_parse_csv_keeps_missing_odds_as_null() -> None:
 
 
 def test_parse_csv_rejects_a_missing_column() -> None:
-    csv = (HEADER.replace(",PSCH", "") + "\n").encode()
+    csv = (HEADER.replace(",HST", "") + "\n").encode()
     with pytest.raises(ValueError, match="missing"):
         _parse_csv(csv, "E0", 2025)
 
@@ -85,3 +85,47 @@ def test_season_of_puts_august_in_the_new_season() -> None:
     assert season_of(dt.date(2026, 7, 1)) == "2026-27"
     assert season_of(dt.date(2026, 5, 24)) == "2025-26"
     assert season_of(dt.date(2026, 1, 15)) == "2025-26"
+
+
+def test_the_current_season_follows_the_calendar() -> None:
+    from src.data.fetch import current_first_year
+
+    assert current_first_year(dt.date(2026, 9, 3)) == 2026
+    assert current_first_year(dt.date(2026, 5, 24)) == 2025
+    assert current_first_year(dt.date(2026, 7, 1)) == 2026
+
+
+def test_replacing_a_season_keeps_the_others_untouched() -> None:
+    from src.data.fetch import replace_season
+
+    existing = pl.DataFrame(
+        {"season": ["2025-26", "2025-26", "2026-27"], "x": [1, 2, 3]}
+    )
+    fresh = pl.DataFrame({"season": ["2026-27", "2026-27"], "x": [30, 31]})
+    out = replace_season(existing, fresh, "2026-27")
+    assert out.filter(pl.col("season") == "2025-26")["x"].to_list() == [1, 2]
+    assert out.filter(pl.col("season") == "2026-27")["x"].to_list() == [30, 31]
+
+
+def test_replace_season_refuses_fresh_rows_from_another_season() -> None:
+    from src.data.fetch import replace_season
+
+    existing = pl.DataFrame({"season": ["2025-26"], "x": [1]})
+    fresh = pl.DataFrame({"season": ["2025-26"], "x": [9]})
+    with pytest.raises(ValueError, match="2025-26"):
+        replace_season(existing, fresh, "2026-27")
+
+
+def test_a_book_missing_from_a_season_file_parses_as_null_odds() -> None:
+    """Early in a season football-data ships the file without Pinnacle closing
+    prices. Odds are context, not identity: missing ones are nulls, not a crash."""
+    header = (
+        "Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR,HS,AS,HST,AST,HC,AC,"
+        "B365CH,B365CD,B365CA,AvgCH,AvgCD,AvgCA\n"
+    )
+    row = "E0,15/08/2026,20:00,Liverpool,Bournemouth,4,2,H,10,8,5,3,6,4,1.3,5.5,9,1.31,5.6,8.9\n"
+    frame = _parse_csv((header + row).encode(), "E0", 2026)
+    assert frame.height == 1
+    assert frame["odds_close_ps_h"][0] is None
+    assert frame["odds_close_avg_h"][0] == 1.31
+    assert frame["home_goals"][0] == 4

@@ -38,7 +38,9 @@ SEASON_START_MONTH = 7
 
 # First calendar year of each ingested season: 2020 means season 2020-21.
 FIRST_SEASON = 2020
-LAST_SEASON = 2025
+
+# The last season follows the calendar: the one being played right now. Set
+# below, once season_of is defined.
 
 LEAGUES: dict[str, str] = {
     "E0": "Premier League",
@@ -154,6 +156,32 @@ def season_of(date: dt.date) -> str:
     return season_label(first_year)
 
 
+def current_first_year(today: dt.date | None = None) -> int:
+    """First calendar year of the season being played on `today`."""
+    return int(season_of(today or dt.date.today())[:4])
+
+
+LAST_SEASON = current_first_year()
+
+
+def replace_season(
+    existing: pl.DataFrame, fresh: pl.DataFrame, season: str
+) -> pl.DataFrame:
+    """`existing` with every row of `season` swapped for the rows of `fresh`.
+
+    Past seasons are never rewritten by a refresh: only the season being
+    played changes from one day to the next.
+    """
+    foreign = fresh.filter(pl.col("season") != season)
+    if foreign.height:
+        raise ValueError(
+            f"fresh rows carry seasons other than {season}: "
+            f"{sorted(foreign['season'].unique().to_list())}"
+        )
+    kept = existing.filter(pl.col("season") != season)
+    return pl.concat([kept, fresh.select(kept.columns)])
+
+
 def _download(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
@@ -176,9 +204,24 @@ def _parse_csv(raw: bytes, league_code: str, first_year: int) -> pl.DataFrame:
     # heterogeneous across seasons and schema inference hides that.
     frame = pl.read_csv(raw, infer_schema_length=0, encoding="utf8-lossy")
 
-    missing = [c for c in COLUMNS if c not in frame.columns]
+    # Odds are context, not identity: a book absent from a season file (early
+    # in a season football-data ships no Pinnacle closing prices) reads as
+    # nulls. Everything else is required.
+    odds_sources = {src for src, dst in COLUMNS.items() if dst in ODDS_COLUMNS}
+    missing = [c for c in COLUMNS if c not in frame.columns and c not in odds_sources]
     if missing:
         raise ValueError(f"{league_code} {season_label(first_year)}: missing {missing}")
+    absent_books = [c for c in odds_sources if c not in frame.columns]
+    if absent_books:
+        LOG.info(
+            "%s %s: no %s column, odds read as null",
+            league_code,
+            season_label(first_year),
+            ", ".join(sorted(absent_books)),
+        )
+        frame = frame.with_columns(
+            [pl.lit(None, dtype=pl.String).alias(c) for c in absent_books]
+        )
 
     # Trailing blank lines are common; a real row always carries the div code.
     total_rows = frame.height
@@ -240,21 +283,9 @@ def fetch_football_data(*, force: bool = False) -> pl.DataFrame:
         LOG.info("cache hit, reading %s", FOOTBALL_DATA_PARQUET)
         return pl.read_parquet(FOOTBALL_DATA_PARQUET)
 
-    frames: list[pl.DataFrame] = []
-    for first_year in range(FIRST_SEASON, LAST_SEASON + 1):
-        for league_code in LEAGUES:
-            url = f"{BASE_URL}/{season_code(first_year)}/{league_code}.csv"
-            frame = _parse_csv(_download(url), league_code, first_year)
-            LOG.info(
-                "%-3s %s: %3d matches",
-                league_code,
-                season_label(first_year),
-                frame.height,
-            )
-            frames.append(frame)
-            time.sleep(REQUEST_DELAY_S)
-
-    matches = pl.concat(frames).sort("date", "home_team")
+    matches = pl.concat(
+        [_football_data_season(y) for y in range(FIRST_SEASON, LAST_SEASON + 1)]
+    ).sort("date", "home_team")
     _check_integrity(matches)
 
     for column in ODDS_COLUMNS:
@@ -270,6 +301,52 @@ def fetch_football_data(*, force: bool = False) -> pl.DataFrame:
     return matches
 
 
+def _football_data_season(first_year: int) -> pl.DataFrame:
+    """The five league files of one season."""
+    frames = []
+    for league_code in LEAGUES:
+        url = f"{BASE_URL}/{season_code(first_year)}/{league_code}.csv"
+        frame = _parse_csv(_download(url), league_code, first_year)
+        LOG.info(
+            "%-3s %s: %3d matches", league_code, season_label(first_year), frame.height
+        )
+        frames.append(frame)
+        time.sleep(REQUEST_DELAY_S)
+    return pl.concat(frames)
+
+
+def refresh_current_season() -> None:
+    """Re-download only the season being played and swap it into both parquets.
+
+    The daily job runs this: past seasons are already on disk and never change,
+    the current one grows every matchday. Understat is read without its local
+    cache for that season, otherwise the refresh would return yesterday's file.
+    """
+    if not (FOOTBALL_DATA_PARQUET.exists() and UNDERSTAT_PARQUET.exists()):
+        raise FileNotFoundError("no cached parquets to refresh; run `make fetch` first")
+    first_year = LAST_SEASON
+    label = season_label(first_year)
+
+    fresh = _football_data_season(first_year).sort("date", "home_team")
+    spine = replace_season(pl.read_parquet(FOOTBALL_DATA_PARQUET), fresh, label)
+    _check_integrity(spine)
+    spine.write_parquet(FOOTBALL_DATA_PARQUET)
+    LOG.info("%s: %d matches played so far", label, fresh.height)
+
+    import soccerdata as sd  # heavy import, only needed on a real fetch
+
+    reader = sd.Understat(
+        leagues=list(UNDERSTAT_LEAGUES),
+        seasons=[season_code(first_year)],
+        no_cache=True,
+    )
+    raw = pl.from_pandas(reader.read_team_match_stats().reset_index())
+    xg = _understat_frame(raw, {season_code(first_year): label})
+    understat = replace_season(pl.read_parquet(UNDERSTAT_PARQUET), xg, label)
+    understat.write_parquet(UNDERSTAT_PARQUET)
+    LOG.info("%s: %d matches with xG so far", label, xg.height)
+
+
 def fetch_fbref(*, force: bool = False) -> pl.DataFrame:
     """Match results and shooting stats from FBref, via soccerdata.
 
@@ -283,6 +360,30 @@ def fetch_fbref(*, force: bool = False) -> pl.DataFrame:
     raise NotImplementedError(
         "fetch_fbref: superseded by fetch_understat, see PLAN.md phase 1"
     )
+
+
+def _understat_frame(raw: pl.DataFrame, season_labels: dict[str, str]) -> pl.DataFrame:
+    """Rename, type and label the soccerdata frame; fail on missing xG."""
+    missing = [c for c in UNDERSTAT_COLUMNS if c not in raw.columns]
+    if missing:
+        raise ValueError(f"Understat is missing columns {missing}")
+    matches: pl.DataFrame = (
+        raw.select(list(UNDERSTAT_COLUMNS))
+        .rename(UNDERSTAT_COLUMNS)
+        .with_columns(
+            pl.col("date").cast(pl.Date),
+            pl.col("league").replace_strict(UNDERSTAT_LEAGUES),
+            pl.col("season").replace_strict(season_labels),
+        )
+        .sort("date", "home_team")
+    )
+    for column in ("home_xg", "away_xg", "home_np_xg", "away_np_xg"):
+        nulls = matches[column].null_count()
+        if nulls:
+            raise ValueError(
+                f"{nulls} null {column!r} rows: Understat data is incomplete"
+            )
+    return matches
 
 
 def fetch_understat(*, force: bool = False) -> pl.DataFrame:
@@ -304,23 +405,10 @@ def fetch_understat(*, force: bool = False) -> pl.DataFrame:
     reader = sd.Understat(leagues=list(UNDERSTAT_LEAGUES), seasons=seasons)
     raw = pl.from_pandas(reader.read_team_match_stats().reset_index())
 
-    missing = [c for c in UNDERSTAT_COLUMNS if c not in raw.columns]
-    if missing:
-        raise ValueError(f"Understat is missing columns {missing}")
-
     season_labels = {
         season_code(y): season_label(y) for y in range(FIRST_SEASON, LAST_SEASON + 1)
     }
-    matches: pl.DataFrame = (
-        raw.select(list(UNDERSTAT_COLUMNS))
-        .rename(UNDERSTAT_COLUMNS)
-        .with_columns(
-            pl.col("date").cast(pl.Date),
-            pl.col("league").replace_strict(UNDERSTAT_LEAGUES),
-            pl.col("season").replace_strict(season_labels),
-        )
-        .sort("date", "home_team")
-    )
+    matches = _understat_frame(raw, season_labels)
 
     for row in (
         matches.group_by("league", "season")
@@ -328,13 +416,6 @@ def fetch_understat(*, force: bool = False) -> pl.DataFrame:
         .sort("league", "season")
     ).iter_rows(named=True):
         LOG.info("%-15s %s: %3d matches", row["league"], row["season"], row["n"])
-
-    for column in ("home_xg", "away_xg", "home_np_xg", "away_np_xg"):
-        nulls = matches[column].null_count()
-        if nulls:
-            raise ValueError(
-                f"{nulls} null {column!r} rows: Understat data is incomplete"
-            )
 
     key = ("date", "home_team", "away_team")
     duplicates = matches.filter(matches.select(key).is_duplicated())
@@ -356,9 +437,20 @@ def main() -> None:
     parser.add_argument(
         "--source", default="all", choices=["all", "football-data", "understat"]
     )
+    parser.add_argument(
+        "--current",
+        action="store_true",
+        help="refresh only the season being played, then rebuild the merged dataset",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    if args.current:
+        from src.data.merge import merge_sources
+
+        refresh_current_season()
+        merge_sources(force=True)
+        return
     if args.source in ("all", "football-data"):
         fetch_football_data(force=args.force)
     if args.source in ("all", "understat"):

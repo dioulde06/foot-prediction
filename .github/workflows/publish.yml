@@ -1,0 +1,68 @@
+name: publish
+
+# Twice a day: after football-data refreshes the fixtures file in the morning,
+# and again in the afternoon for the evening matches' late prices. Every run is
+# idempotent: a fixture already published is never republished, an odds or
+# scorers row already captured is never overwritten.
+on:
+  schedule:
+    - cron: "0 7 * * *"
+    - cron: "0 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      # Only the season being played moves; past seasons are versioned.
+      - run: make fetch-current
+
+      - run: make publish
+
+      - run: make site
+
+      - name: Commit what changed
+        run: |
+          git config user.name "barometre-bot"
+          git config user.email "barometre-bot@users.noreply.github.com"
+          git add data predictions site
+          if git diff --cached --quiet; then
+            echo "nothing new today"
+          else
+            git commit -m "chore: publish $(date -u +'%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

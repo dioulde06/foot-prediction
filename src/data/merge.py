@@ -20,7 +20,12 @@ from pathlib import Path
 
 import polars as pl
 
-from src.data.fetch import fetch_football_data, fetch_understat
+from src.data.fetch import (
+    LAST_SEASON,
+    fetch_football_data,
+    fetch_understat,
+    season_label,
+)
 from src.data.team_mapping import to_canonical
 
 LOG = logging.getLogger(__name__)
@@ -89,6 +94,22 @@ def merge_sources(*, force: bool = False) -> pl.DataFrame:
             f"join rate {100 * rate:.2f} % is below the "
             f"{100 * MIN_JOIN_RATE:.0f} % floor; {unmatched.height} matches "
             f"unmatched, first rows:\n{unmatched.head(15)}"
+        )
+
+    # Understat publishes a matchday's xG a little after football-data posts the
+    # score. A current-season match without xG is not wrong, it is early: it is
+    # left out today and comes in with the next refresh. Past seasons are held
+    # to the join-rate floor above instead.
+    current = season_label(LAST_SEASON)
+    early = merged.filter(pl.col("home_xg").is_null() & (pl.col("season") == current))
+    if early.height:
+        LOG.info(
+            "%d %s matches without xG yet, left out until Understat has them",
+            early.height,
+            current,
+        )
+        merged = merged.filter(
+            ~(pl.col("home_xg").is_null() & (pl.col("season") == current))
         )
 
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
