@@ -18,7 +18,7 @@ mesure honnêtement sa calibration dans le temps, face aux cotes du marché.
 | 2bis | Exploration du signal (train uniquement) | fait — `notebooks/02_analyse.ipynb` |
 | 3 | Features (Elo, rolling, non-fuite) | fait — 6 features, 20 tests de non-fuite et d'invariance |
 | 4 | Modèle LightGBM et calibration | fait — 1.0044 sur le test |
-| 5 | Validation walk-forward | fait — stable sur 4 saisons |
+| 5 | Validation walk-forward | fait — stable sur 4 saisons ; test d'information : le modèle n'apporte rien au marché |
 | 6 | App de publication et suivi | fait — `make publish` / `make track` |
 
 Le détail de chaque phase, avec ce qu'il faut comprendre et qui fait quoi, est
@@ -64,6 +64,7 @@ make test      # pytest
 make lint      # ruff + mypy strict
 make train     # entraîne, calibre, écrit reports/model_report.md
 make eval      # walk-forward + saturation de l'historique
+make information  # le modèle sait-il quelque chose que le marché ignore ?
 make publish   # prédit les matchs à venir, append-only
 make track     # calibration des prédictions publiées, une fois jouées
 
@@ -202,6 +203,35 @@ Le balayage de l'historique donne 1.0073 / 1.0050 / 1.0038 / 1.0044 pour 1, 2, 3
 et 4 saisons d'entraînement. **Le gain sature à 3 saisons**, soit environ 5 400
 matchs. Plus de données n'est pas le levier.
 
+### Le test d'information : le modèle sait-il quelque chose que le marché ignore ?
+
+Avant de chercher à réduire l'écart de 0.028 par des features ou des données,
+une question décide de tout : une fois le marché connu, les résultats
+donnent-ils encore du poids au modèle ? `src/eval/information.py` ajuste le
+mélange géométrique `p_k ∝ modèle_k^a · marché_k^b` par maximum de
+vraisemblance sur les prédictions hors échantillon des 4 saisons walk-forward
+(7 081 matchs). Un modèle calibré mais sans information propre obtient
+`a ≈ 0`, `b ≈ 1`.
+
+| | valeur |
+|---|---|
+| `a` (poids du modèle) | **−0.126**, intervalle bootstrap 95 % [−0.240, −0.024] |
+| `b` (poids du marché) | 1.138 |
+| gain du mélange sur le marché, hors échantillon, par saison | −0.0008 / +0.0009 / +0.0008 / +0.0003 |
+
+**Le poids du modèle est négatif, et l'intervalle exclut zéro.** Quand le
+modèle s'écarte du marché, il a plus souvent tort que raison. Il ne contient
+rien que le marché ne sache déjà : l'Elo, la forme, le xG et le repos sont
+tous déjà dans les cotes, en mieux. Le mélange ne gagne rien de mesurable
+(les quatre gains sont du bruit, de signe variable).
+
+Conséquence : **ajouter des variantes des mêmes features ou plus d'historique ne
+peut pas fermer l'écart.** Seule une source d'information que le marché
+intègre et que le dataset n'a pas — compositions, absents, charge européenne —
+peut y prétendre. Le `b > 1` dit au passage que le marché moyen reste un peu
+sous-confiant après dévigorisation par puissance, mais le mélange hors
+échantillon montre que ce n'est pas exploitable non plus.
+
 ### Les baselines mesurées sur 2025-26 (1 751 matchs, cotes `avg`)
 
 | Baseline | log-loss | Brier | ECE | accuracy* |
@@ -268,6 +298,8 @@ matchs joués, face au marché.
 |---|---|
 | `reports/model_report.md` | résultats du test, garde-fou, calibration par tranche, biais par classe, importance des features |
 | `reports/walk_forward.md` | stabilité saison par saison et saturation de l'historique |
+| `reports/information.md` | test d'information : poids du modèle une fois le marché connu, mélange hors échantillon |
+| `reports/oos_predictions.parquet` | prédictions hors échantillon des 4 saisons walk-forward, modèle et marché, réutilisables sans réentraîner |
 | `reports/tracking.md` | calibration des prédictions publiées |
 
 ## Documents

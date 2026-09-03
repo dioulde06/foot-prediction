@@ -1,4 +1,4 @@
-.PHONY: install lint test fetch merge audit-teams baselines train eval publish track
+.PHONY: install lint test fetch merge audit-teams baselines train eval information publish track
 
 install:
 	uv sync
@@ -32,6 +32,10 @@ train:
 
 eval:
 	uv run python -m scripts.run_walk_forward
+
+# Does the model know anything the market does not? Blend test, walk-forward.
+information:
+	uv run python -m scripts.run_information
 
 # Predict the upcoming fixtures and append them to predictions/.
 publish:
