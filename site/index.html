@@ -315,6 +315,7 @@
   .pick.fair[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-style: solid; }
   .pick.fair[aria-pressed="true"] b { color: var(--panel); }
   .prop-kv .bad { color: var(--stamp); }
+  .dtitle small { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--ink-3); margin-left: 8px; }
   .hint { display: inline-grid; place-items: center; width: 15px; height: 15px; border: 1px solid var(--line); border-radius: 50%; font-size: 10px; color: var(--ink-3); cursor: help; vertical-align: middle; margin-left: 4px; }
   .fold { background: var(--panel); border: 1px solid var(--line); margin-top: 10px; }
   .fold summary { list-style: none; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 12px 18px; cursor: pointer; }
@@ -795,7 +796,7 @@ function drawer(m) {
         <div class="kv"><span>xG pour · contre</span><b class="n">${t.xf.toFixed(1)} · ${t.xa.toFixed(1)}</b></div>
       </div>`).join("")}
     </div>
-    <div class="label dtitle">Qui peut marquer <span class="hint" title="Probabilité de marquer au moins une fois hors penalty, s'il joue 90 minutes. Ignore blessures et compos.">?</span></div>
+    <div class="label dtitle">Qui peut marquer <span class="hint" title="Probabilité de marquer au moins une fois hors penalty, s'il joue 90 minutes. Ignore blessures et compos.">?</span><small>joueurs ayant joué cette saison, plus de ${DATA.meta.scorers.minMinutes} min sur deux saisons</small></div>
     <div class="dgrid">
       ${sides.map(([side, t]) => `<div><div class="sc">${t.scorers.map((p) => `<div class="scrow">
             <span class="scname">${esc(p.player)}<em>${p.np_goals} b · ${p.np_xg} xG</em></span>
