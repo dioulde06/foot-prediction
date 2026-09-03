@@ -15,6 +15,7 @@ covered on 2025-26, so unusable alone on the test season).
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import logging
 import time
 import urllib.request
@@ -31,6 +32,9 @@ UNDERSTAT_PARQUET = RAW_DIR / "understat.parquet"
 BASE_URL = "https://www.football-data.co.uk/mmz4281"
 USER_AGENT = "foot-prediction/0.1 (research; contact via github.com/dioulde06)"
 REQUEST_DELAY_S = 1.0
+
+# A season opens in this month; anything earlier belongs to the previous one.
+SEASON_START_MONTH = 7
 
 # First calendar year of each ingested season: 2020 means season 2020-21.
 FIRST_SEASON = 2020
@@ -138,6 +142,16 @@ def season_code(first_year: int) -> str:
 def season_label(first_year: int) -> str:
     """Human season label: 2020 -> '2020-21'."""
     return f"{first_year}-{(first_year + 1) % 100:02d}"
+
+
+def season_of(date: dt.date) -> str:
+    """Season label a date belongs to: 2026-09-03 -> '2026-27'.
+
+    European seasons open in August, so July is the cut. Needed for fixtures,
+    which the feed publishes without a season.
+    """
+    first_year = date.year if date.month >= SEASON_START_MONTH else date.year - 1
+    return season_label(first_year)
 
 
 def _download(url: str) -> bytes:

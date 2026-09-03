@@ -157,3 +157,37 @@ def test_unplayed_fixtures_do_not_move_the_ratings() -> None:
     both = EloRatings().fit(with_fixture)
     for team in ("A", "B"):
         assert played_only.get_rating(team, after) == both.get_rating(team, after)
+
+
+def test_an_unplayed_fixture_in_a_new_season_still_triggers_the_regression() -> None:
+    """The first matchday of a season must use regressed ratings.
+
+    Getting this wrong is invisible: the fixture gets a plausible rating, taken
+    from the end of the previous season, and the prediction is quietly stale.
+    """
+    played = _matches([("2020-21", "A", "B", 3, 0)])
+    peak = EloRatings().fit(played).get_rating("A", dt.date(2020, 8, 2))
+
+    with_fixture = pl.concat(
+        [
+            played,
+            pl.DataFrame(
+                {
+                    "date": [dt.date(2021, 8, 14)],
+                    "season": ["2021-22"],
+                    "home_team": ["A"],
+                    "away_team": ["B"],
+                    "home_goals": [None],
+                    "away_goals": [None],
+                },
+                schema=played.schema,
+            ),
+        ]
+    )
+    at_kickoff = (
+        EloRatings(regression=0.25)
+        .fit(with_fixture)
+        .get_rating("A", dt.date(2021, 8, 14))
+    )
+    assert at_kickoff == pytest.approx(1500.0 + 0.75 * (peak - 1500.0))
+    assert at_kickoff < peak

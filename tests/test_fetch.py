@@ -75,3 +75,13 @@ def test_check_integrity_rejects_unknown_result_code() -> None:
 def test_check_integrity_rejects_null_goals() -> None:
     with pytest.raises(ValueError, match="home_goals"):
         _check_integrity(_minimal_frame(home_goals=[None]))
+
+
+def test_season_of_puts_august_in_the_new_season() -> None:
+    from src.data.fetch import season_of
+
+    assert season_of(dt.date(2026, 9, 3)) == "2026-27"
+    assert season_of(dt.date(2026, 8, 1)) == "2026-27"
+    assert season_of(dt.date(2026, 7, 1)) == "2026-27"
+    assert season_of(dt.date(2026, 5, 24)) == "2025-26"
+    assert season_of(dt.date(2026, 1, 15)) == "2025-26"

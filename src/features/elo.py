@@ -74,16 +74,21 @@ class EloRatings:
 
         season: str | None = None
         for row in matches.iter_rows(named=True):
-            # Unplayed fixtures ride along in the same frame so that features
-            # for upcoming matches go through exactly the same code path as
-            # training ones. They carry no result, so they update nothing.
-            if row["home_goals"] is None or row["away_goals"] is None:
-                continue
+            # The season change is handled before anything else, so that the
+            # first fixture of a new season gets regressed ratings even though
+            # it has not been played. Getting this order wrong means the first
+            # matchday of a season is predicted with last season's ratings.
             if season is not None and row["season"] != season:
                 # Effective the day before the new season opens, so that a
                 # rating read on the first matchday already includes it.
                 self._regress(row["date"] - dt.timedelta(days=1))
             season = row["season"]
+
+            # Unplayed fixtures ride along in the same frame so that features
+            # for upcoming matches go through exactly the same code path as
+            # training ones. They carry no result, so they update nothing.
+            if row["home_goals"] is None or row["away_goals"] is None:
+                continue
             self._play(row)
         return self
 

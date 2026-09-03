@@ -27,7 +27,7 @@ import lightgbm as lgb
 import numpy as np
 import polars as pl
 
-from src.data.fetch import LEAGUES, _download
+from src.data.fetch import LEAGUES, _download, season_of
 from src.eval.metrics import CLASSES, Probs
 from src.features.build import FEATURE_COLUMNS, build_features
 from src.models.calibrate import TemperatureScaler
@@ -138,15 +138,18 @@ def upcoming_features(
         for column in played.columns
         if column not in ("date", "league", "home_team", "away_team")
     }
-    # Same season label as the latest played match: the feed has no season.
-    season = played.filter(pl.col("date") == latest)["season"][0]
+    # The season is derived from the fixture date, never copied from the last
+    # played match: a fixture in August belongs to the new season, and getting
+    # that wrong skips the between-season Elo regression entirely.
     padded = future.select(
         "date",
         "league",
         "home_team",
         "away_team",
         *[blanks[c] for c in played.columns if c in blanks],
-    ).with_columns(pl.lit(season).alias("season"))
+    ).with_columns(
+        pl.col("date").map_elements(season_of, return_dtype=pl.String).alias("season")
+    )
 
     combined = pl.concat([played, padded.select(played.columns)]).sort("date")
     features = build_features(combined, combined["date"].max())  # type: ignore[arg-type]
