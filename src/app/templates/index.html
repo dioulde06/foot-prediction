@@ -540,6 +540,7 @@
           </div>
           <div class="frow strip" id="days"></div>
           <div class="frow chips" id="leagues"></div>
+          <div class="frow chips" id="probs" title="Probabilité que le favori du match gagne, selon nous"></div>
         </div>
         <div id="rows"></div>
       </div>
@@ -739,6 +740,12 @@ let view = "day", density = "compact", dayFilter = "all", pricedOnly = false, mi
    being played, and finished matches live in their own list. Both stay in the
    payload either way, because the bet log settles itself from it. */
 let board = "upcoming";
+/* Threshold on the favourite's win probability. A draw belongs to no team, so
+   only the home and away outcomes count here. */
+let minProb = 0;
+const PROB_STEPS = [0.5, 0.6, 0.7, 0.8];
+const favProb = (m) => Math.max(m.model[0], m.model[2]);
+const favTeam = (m) => m.model[0] >= m.model[2] ? m.home : m.away;
 const leagueOn = new Set(LEAGUES);
 const collapsed = new Set();
 let collapsedInit = false;
@@ -805,7 +812,7 @@ function saveCarnet() { try { localStorage.setItem("barometre.carnet", JSON.stri
 function pool() {
   return DATA.upcoming.filter((m) => stateOf(m) === "open"
     && (dayFilter === "all" || (dayFilter === "week" ? daysFromToday(m.date) < 7 : m.date === dayFilter))
-    && leagueOn.has(m.league) && (!pricedOnly || m.odds));
+    && leagueOn.has(m.league) && (!pricedOnly || m.odds) && favProb(m) >= minProb);
 }
 const inBoard = (m) => board === "done" ? stateOf(m) === "done" : stateOf(m) !== "done";
 const scoped = () => DATA.upcoming.filter(inBoard);
@@ -813,7 +820,7 @@ function visible() {
   const q = search.trim().toLowerCase();
   return scoped().filter((m) =>
     (dayFilter === "all" || (dayFilter === "week" ? daysFromToday(m.date) < 7 : m.date === dayFilter))
-    && leagueOn.has(m.league) && (!pricedOnly || m.odds)
+    && leagueOn.has(m.league) && (!pricedOnly || m.odds) && favProb(m) >= minProb
     && (!q || m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q)) && (!mineOnly || picks.has(m.id)));
 }
 
@@ -903,6 +910,13 @@ function renderFilters() {
   ].join("");
   document.getElementById("leagues").innerHTML = LEAGUES.map((l) =>
     `<button type="button" class="chip" data-l="${esc(l)}" aria-pressed="${leagueOn.has(l)}">${esc(l)} <em>${all.filter((m) => m.league === l).length}</em></button>`).join("");
+  const others = all.filter((m) => leagueOn.has(m.league) && (!pricedOnly || m.odds)
+    && (dayFilter === "all" || (dayFilter === "week" ? daysFromToday(m.date) < 7 : m.date === dayFilter)));
+  document.getElementById("probs").innerHTML = [
+    `<span class="label">Favori donné à</span>`,
+    `<button type="button" class="chip" data-mp="0" aria-pressed="${minProb === 0}">Tous <em>${others.length}</em></button>`,
+    ...PROB_STEPS.map((t) => `<button type="button" class="chip" data-mp="${t}" aria-pressed="${Math.abs(minProb - t) < 1e-9}">≥ ${p0(t)} % <em>${others.filter((m) => favProb(m) >= t).length}</em></button>`),
+  ].join("");
   document.getElementById("priced").setAttribute("aria-pressed", String(pricedOnly));
   document.getElementById("mine").setAttribute("aria-pressed", String(mineOnly));
   document.getElementById("mine-n").textContent = picks.size;
@@ -922,11 +936,13 @@ function renderRows() {
   document.getElementById("rows").innerHTML = groups.map((g) => {
     const isOpen = !collapsed.has(g.key);
     const later = g.items.every((m) => !m.odds);
-    const favs = g.items.filter((m) => Math.max(...m.model) >= 0.6).sort((a, b) => Math.max(...b.model) - Math.max(...a.model)).slice(0, 3)
-      .map((m) => { const k = m.model.indexOf(Math.max(...m.model)); return k === 0 ? m.home : m.away; });
+    // With a threshold on, this is the list of teams that clear it, so it shows
+    // whether the group is folded or not, and it carries the probability.
+    const ranked = g.items.filter((m) => favProb(m) >= (minProb || 0.6)).sort((a, b) => favProb(b) - favProb(a));
+    const favs = (minProb ? ranked : ranked.slice(0, 3)).map((m) => `${esc(favTeam(m))} ${p0(favProb(m))} %`);
     const tight = g.items.filter((m) => Math.max(...m.model) < 0.42).length;
     const picked = g.items.filter((m) => picks.has(m.id)).length;
-    const summary = isOpen ? "" : `<small>${favs.length ? `Favoris nets : ${favs.map(esc).join(", ")}` : "Aucun favori net"}${tight ? ` · ${tight} match${tight > 1 ? "s" : ""} serré${tight > 1 ? "s" : ""}` : ""}</small>`;
+    const summary = isOpen && !minProb ? "" : `<small>${favs.length ? `${minProb ? "Donnés gagnants" : "Favoris nets"} : ${favs.join(", ")}` : "Aucun favori net"}${tight && !minProb ? ` · ${tight} match${tight > 1 ? "s" : ""} serré${tight > 1 ? "s" : ""}` : ""}</small>`;
     return `<button type="button" class="ghead" data-g="${esc(g.key)}" aria-expanded="${isOpen}">
       <span class="gl">${esc(g.label)}${summary}</span>
       <span class="gr"><span class="n">${g.items.length} match${g.items.length > 1 ? "s" : ""}${later ? " · ≈" : ""}</span>${picked ? `<span class="pill">${picked} au ticket</span>` : ""}<i class="chev">${isOpen ? "–" : "+"}</i></span></button>`
@@ -1609,6 +1625,8 @@ document.addEventListener("click", (e) => {
   if (dn) { density = dn.dataset.dens; setSeg("data-dens", density); renderRows(); return; }
   const day = t.closest("[data-day]");
   if (day) { dayFilter = day.dataset.day; collapsed.clear(); collapsedInit = dayFilter !== "all" && dayFilter !== "week"; pruneHidden(); rerender(); return; }
+  const mp = t.closest("[data-mp]");
+  if (mp) { minProb = Number(mp.dataset.mp); collapsed.clear(); collapsedInit = minProb > 0; pruneHidden(); rerender(); return; }
   const ch = t.closest("[data-l]");
   if (ch) { const l = ch.dataset.l; if (leagueOn.has(l) && leagueOn.size > 1) leagueOn.delete(l); else leagueOn.add(l); pruneHidden(); rerender(); return; }
   if (t.closest("#priced")) { pricedOnly = !pricedOnly; pruneHidden(); rerender(); return; }

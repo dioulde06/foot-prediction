@@ -353,7 +353,10 @@ lien c'est partager le ticket.
   du plus récent au plus ancien). Les matchs sont regroupés par jour ou par
   championnat, repliés avec un résumé (favoris nets, matchs serrés), en vue
   compacte ou détaillée, filtrés par jour, championnat, équipe, matchs cotés,
-  mes sélections. Heures dans le fuseau du visiteur, compte à rebours sous
+  mes sélections, et par **probabilité du favori** (≥ 50, 60, 70, 80 %, sur
+  notre probabilité, le nul n'étant la victoire de personne). Avec un seuil
+  actif, l'en-tête de chaque groupe liste les équipes retenues avec leur
+  probabilité. Heures dans le fuseau du visiteur, compte à rebours sous
   24 h, verrouillage au coup d'envoi, score en direct puis final. Un match pas
   encore coté se joue à notre prix juste (1 ÷ probabilité, sans marge), marqué
   ≈. La
