@@ -348,7 +348,9 @@ la mise, et le ticket. Le ticket est une colonne fixe sur grand écran, un
 panneau coulissant sur mobile ; il vit dans l'adresse de la page, copier le
 lien c'est partager le ticket.
 
-- **Matchs** : les matchs des 35 prochains jours, regroupés par jour ou par
+- **Matchs** : deux listes séparées comme chez un bookmaker, **À venir**
+  (à jouer et en cours) et **Terminés** (les résultats des 10 derniers jours,
+  du plus récent au plus ancien). Les matchs sont regroupés par jour ou par
   championnat, repliés avec un résumé (favoris nets, matchs serrés), en vue
   compacte ou détaillée, filtrés par jour, championnat, équipe, matchs cotés,
   mes sélections. Heures dans le fuseau du visiteur, compte à rebours sous

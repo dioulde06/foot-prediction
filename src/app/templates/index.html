@@ -519,6 +519,10 @@
       <div class="board">
         <div class="filters">
           <div class="frow">
+            <div class="seg" id="board" title="À venir ou déjà joués">
+              <button type="button" data-b="upcoming" aria-pressed="true">À venir <em class="n" id="n-open"></em></button>
+              <button type="button" data-b="done" aria-pressed="false">Terminés <em class="n" id="n-done"></em></button>
+            </div>
             <div class="seg" id="view" title="Regrouper par">
               <button type="button" data-v="day" aria-pressed="true">Par jour</button>
               <button type="button" data-v="league" aria-pressed="false">Par championnat</button>
@@ -728,6 +732,10 @@ const picks = new Map();
 const open = new Set();
 let objective = "target", target = 10, nLegs = 4, loadedProp = null;
 let view = "day", density = "compact", dayFilter = "all", pricedOnly = false, mineOnly = false, search = "";
+/* Bookmaker convention: the fixture list carries what can still be bet or is
+   being played, and finished matches live in their own list. Both stay in the
+   payload either way, because the bet log settles itself from it. */
+let board = "upcoming";
 const leagueOn = new Set(LEAGUES);
 const collapsed = new Set();
 let collapsedInit = false;
@@ -787,9 +795,11 @@ function pool() {
     && (dayFilter === "all" || (dayFilter === "week" ? daysFromToday(m.date) < 7 : m.date === dayFilter))
     && leagueOn.has(m.league) && (!pricedOnly || m.odds));
 }
+const inBoard = (m) => board === "done" ? stateOf(m) === "done" : stateOf(m) !== "done";
+const scoped = () => DATA.upcoming.filter(inBoard);
 function visible() {
   const q = search.trim().toLowerCase();
-  return DATA.upcoming.filter((m) =>
+  return scoped().filter((m) =>
     (dayFilter === "all" || (dayFilter === "week" ? daysFromToday(m.date) < 7 : m.date === dayFilter))
     && leagueOn.has(m.league) && (!pricedOnly || m.odds)
     && (!q || m.home.toLowerCase().includes(q) || m.away.toLowerCase().includes(q)) && (!mineOnly || picks.has(m.id)));
@@ -858,13 +868,21 @@ function renderBins() {
 
 /* ---------------- matches view ---------------- */
 function renderFilters() {
-  const all = DATA.upcoming, vis = visible(), pl = pool();
+  const all = scoped(), vis = visible(), pl = pool();
   const days = [...new Set(all.map((m) => m.date))];
-  const upcoming = all.filter((m) => stateOf(m) === "open");
-  document.getElementById("n-matchs").textContent = upcoming.length;
-  document.getElementById("month-title").textContent = `${upcoming.length} matchs à venir`;
-  const priced = upcoming.filter((m) => m.odds).length;
-  document.getElementById("month-sub").innerHTML = `${days.length} jours · ${priced} cotés, ${upcoming.length - priced} pas encore · affichés <b>${vis.length}</b>`;
+  const open = DATA.upcoming.filter((m) => stateOf(m) === "open");
+  const done = DATA.upcoming.filter((m) => stateOf(m) === "done");
+  const live = DATA.upcoming.filter((m) => stateOf(m) === "live").length;
+  document.getElementById("n-matchs").textContent = open.length;
+  document.getElementById("n-open").textContent = open.length + live;
+  document.getElementById("n-done").textContent = done.length;
+  document.getElementById("month-title").textContent = board === "done"
+    ? `${done.length} matchs terminés`
+    : `${open.length} matchs à venir`;
+  const priced = open.filter((m) => m.odds).length;
+  document.getElementById("month-sub").innerHTML = board === "done"
+    ? `${days.length} jours · résultats des ${DATA.meta.live.windowDays} derniers jours · affichés <b>${vis.length}</b>`
+    : `${days.length} jours · ${priced} cotés, ${open.length - priced} pas encore${live ? ` · ${live} en cours` : ""} · affichés <b>${vis.length}</b>`;
   document.getElementById("pool-sub").innerHTML = `Parmi les <b>${pl.length}</b> matchs de l'onglet Matchs, avec ses filtres. Des combinaisons, pas des conseils : toutes perdent en moyenne.`;
   document.getElementById("days").innerHTML = [
     `<button type="button" class="chip" data-day="all" aria-pressed="${dayFilter === "all"}">Tout <em>${all.length}</em></button>`,
@@ -880,7 +898,8 @@ function renderFilters() {
 function groupsOf(list) {
   const key = view === "day" ? (m) => m.date : (m) => m.league;
   const label = view === "day" ? dayLong : (l) => l;
-  const order = view === "day" ? [...new Set(list.map(key))] : LEAGUES.filter((l) => list.some((m) => m.league === l));
+  const days = [...new Set(list.map(key))];
+  const order = view === "day" ? (board === "done" ? days.reverse() : days) : LEAGUES.filter((l) => list.some((m) => m.league === l));
   return order.map((k) => ({ key: k, label: label(k), items: list.filter((m) => key(m) === k) }));
 }
 function renderRows() {
@@ -1555,6 +1574,14 @@ document.addEventListener("click", (e) => {
   if (ob) { objective = ob.dataset.obj; setSeg("data-obj", objective); syncLoaded(); renderProps(); return; }
   const nl = t.closest("[data-n]");
   if (nl) { nLegs = Number(nl.dataset.n); setSeg("data-n", nLegs); syncLoaded(); renderProps(); return; }
+  const bd = t.closest("[data-b]");
+  if (bd) {
+    board = bd.dataset.b; setSeg("data-b", board);
+    // The day chips belong to the list being shown, so a date from the other
+    // one would filter everything out.
+    dayFilter = "all"; collapsed.clear(); collapsedInit = false;
+    pruneHidden(); rerender(); return;
+  }
   const v = t.closest("[data-v]");
   if (v) { view = v.dataset.v; setSeg("data-v", view); collapsed.clear(); collapsedInit = false; renderRows(); return; }
   const dn = t.closest("[data-dens]");
