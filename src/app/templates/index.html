@@ -108,6 +108,7 @@
   .viewhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 20px; padding: 6px 2px 0; }
   .viewhead p { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; max-width: 70ch; }
   .viewhead p b { color: var(--ink); }
+  .sources { display: grid; gap: 5px; justify-items: end; }
   .oddsrc { display: grid; gap: 1px; font-size: 12px; color: var(--ink-3); text-align: right; }
   .oddsrc b { color: var(--ink-2); font-weight: 600; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: clip; }
@@ -510,8 +511,10 @@
           <h1 id="month-title">Les matchs</h1>
           <p id="month-sub"></p>
         </div>
-        <div class="oddsrc" id="oddsrc"></div>
-        <div class="oddsrc" id="livesrc" hidden></div>
+        <div class="sources">
+          <div class="oddsrc" id="oddsrc"></div>
+          <div class="oddsrc" id="livesrc" hidden></div>
+        </div>
       </div>
       <div class="board">
         <div class="filters">
