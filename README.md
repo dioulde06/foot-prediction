@@ -370,7 +370,9 @@ lien c'est partager le ticket.
   cotes de clôture, vrais résultats). Pour chaque objectif : paris, gagnés face
   au taux annoncé, misé, récupéré, résultat face à l'attendu, la courbe
   cumulée réalisé contre attendu, et chaque semaine avec ses trois paris et
-  leurs sélections cochées. Puis le carnet du visiteur : ce qu'il a réellement
+  leurs sélections cochées. Une semaine est figée le lundi mais **datée par ses
+  matchs** : un lot figé le 31 août et joué du 4 au 7 septembre s'affiche en
+  septembre. Puis le carnet du visiteur : ce qu'il a réellement
   misé, soldé avec les résultats, gardé dans son navigateur.
 - **Méthode** : les chiffres du modèle, le diagramme de fiabilité, un lexique
   en huit entrées, la preuve par tranche et l'écart au marché saison par

@@ -1389,7 +1389,7 @@ function renderCarnet() {
       <div class="${clv === null ? "" : clv >= 0 ? "good" : "bad"}"><i>Clôture battue <span class="hint" title="Ta cote face à la cote de clôture du marché, sur les sélections jouées. Positif : tu as pris le prix avant que le marché ne le baisse. C'est le test de compétence des parieurs professionnels.">?</span></i><b class="n">${clv === null ? "–" : `${clv >= 0 ? "+" : ""}${p1(clv)} %`}</b><span>${clvs.length ? `${clvs.length} sélection${clvs.length > 1 ? "s" : ""} jouée${clvs.length > 1 ? "s" : ""}` : "après les premiers matchs"}</span></div>
     </div>
     ${settled.map(({ c, s: st }) => `<div class="cbet ${st.status}">
-      <div class="cb1"><span>${frDate(c.at)} · ${esc(bookOf(c.book) ? bookOf(c.book).name : c.book)} · ${c.legs.length} sélection${c.legs.length > 1 ? "s" : ""}</span><span class="n">${money(c.stake)} € @${c.odds.toFixed(2)}${c.ours && Math.abs(c.ours - c.odds) > 0.005 ? ` <small>(nous ${c.ours.toFixed(2)})</small>` : ""}</span></div>
+      <div class="cb1"><span>Misé le ${frDate(c.at)} · ${esc(bookOf(c.book) ? bookOf(c.book).name : c.book)} · ${c.legs.length} sélection${c.legs.length > 1 ? "s" : ""}</span><span class="n">${money(c.stake)} € @${c.odds.toFixed(2)}${c.ours && Math.abs(c.ours - c.odds) > 0.005 ? ` <small>(nous ${c.ours.toFixed(2)})</small>` : ""}</span></div>
       <div class="cb2">${st.legs.map((l) => `<span class="${l.status}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.status === "won" ? " ✓" : l.status === "lost" ? " ✗" : ""}${l.score ? ` <small>${esc(l.score)}${l.live ? ` ${esc(l.live)}` : ""}</small>` : ""}${l.live ? ` <i class="lv on">direct</i>` : l.provisional ? ` <i class="lv">direct</i>` : ""}${l.clv !== null ? ` <small>clôture ${l.clv >= 0 ? "+" : ""}${p1(l.clv)} %</small>` : ""}</span>`).join("")}</div>
       <div class="cb3"><span>${st.status === "open" ? `si ça passe ${money(c.stake * c.odds)} € · attendu ${money(c.stake * c.pq * c.odds)} €` : `réalisé ${money(st.payout)} € · attendu ${money(c.stake * c.pq * c.odds)} €`}</span><span class="status ${st.status}">${LABEL[st.status]}</span><button type="button" class="kill" data-del="${c.id}" aria-label="Supprimer ce pari">×</button></div>
     </div>`).join("")}
@@ -1446,7 +1446,7 @@ function renderTrack() {
   setSeg("data-tsrc", trackSrc);
   document.getElementById("tsrc-backtest").textContent = T.backtest.season ? `Rejeu ${T.backtest.season}` : "Rejeu";
   document.getElementById("track-sub").innerHTML = trackSrc === "live"
-    ? `Chaque lundi, le robot fige les trois propositions de chaque objectif sur les matchs cotés de la semaine${src.since ? `, depuis le ${frDate(src.since)}` : ""}. Si on avait misé <b>${money(trackStake)} €</b> sur chacune, voici ce que ça donne, résultats réels.`
+    ? `Chaque lundi, le robot fige les trois propositions de chaque objectif sur les matchs cotés de la semaine${base.weeks.length ? `, depuis le ${frDate(firstDay(base.weeks[0]))}` : ""}. Si on avait misé <b>${money(trackStake)} €</b> sur chacune, voici ce que ça donne, résultats réels.`
     : `Si on avait misé <b>${money(trackStake)} €</b> sur chacune des trois propositions, chaque semaine de la saison ${esc(T.backtest.season || "")}. Prédictions hors échantillon, cotes de clôture, vrais résultats.`;
   if (!base.weeks.length) {
     document.getElementById("track-lesson").textContent = trackSrc === "live" ? "Aucune proposition figée encore : la première semaine avec six matchs cotés la déclenchera." : "Pas de rejeu disponible.";
@@ -1468,6 +1468,7 @@ function renderTrack() {
     <div class="${net >= 0 ? "good" : "bad"} wide"><i>Résultat</i><b class="n">${net >= 0 ? "+" : ""}${money(net)} €</b><span>attendu ${o.expectedNet >= 0 ? "+" : ""}${money(o.expectedNet)} €</span></div>`;
   const W = 640, H = 220, L = 46, R = 12, T0 = 12, B = 28;
   const cum = o.cumulative.length ? o.cumulative : [{ week: base.weeks[0].week, net: 0, expected: 0 }], n = cum.length;
+  const axis = new Map(base.weeks.map((w) => [w.week, firstDay(w)]));
   const vals = cum.flatMap((c) => [c.net, c.expected, 0]);
   const lo = Math.min(...vals), hi = Math.max(...vals), span = (hi - lo) || 1;
   const x = (i) => L + (i / Math.max(1, n - 1)) * (W - L - R), y = (v) => T0 + (1 - (v - lo) / span) * (H - T0 - B);
@@ -1481,18 +1482,29 @@ function renderTrack() {
     <path class="draw" d="${path("net")}" fill="none" stroke="var(--ink)" stroke-width="2" />
     <circle cx="${x(n - 1)}" cy="${y(cum[n - 1].net)}" r="3.5" fill="var(--ink)" />
     <text x="${x(n - 1) - 6}" y="${y(cum[n - 1].net) - 8}" text-anchor="end" font-size="11" font-weight="700" fill="var(--ink)" font-family="Sometype Mono, monospace">${cum[n - 1].net >= 0 ? "+" : ""}${Math.round(cum[n - 1].net)} €</text>
-    ${[0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${frDate(cum[i].week)}</text>`).join("")}`;
+    ${[0, Math.floor((n - 1) / 2), n - 1].map((i) => `<text x="${x(i)}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === n - 1 ? "end" : "middle"}" font-size="9.5" fill="var(--ink-3)" font-family="Sometype Mono, monospace">${frDate(axis.get(cum[i].week) || cum[i].week)}</text>`).join("")}`;
   document.getElementById("track-chart-sub").textContent = `${money(trackStake)} € par pari · en euros`;
   renderTrackWeeks(o, T);
 }
 const betStatus = (b) => b.won === null ? "open" : b.won ? "won" : "lost";
+/* A week is keyed by the Monday its proposals were frozen on, and its matches
+   can run past the Sunday. So every date the reader sees comes from the matches
+   themselves: a batch frozen on 31 August is played in September, and labelling
+   it by its Monday reads as a stale date. */
+const weekDays = (w) => w.bets.flatMap((b) => b.legs.map((l) => l.date)).sort();
+const firstDay = (w) => weekDays(w)[0] || w.week;
+const lastDay = (w) => weekDays(w).pop() || w.week;
+const weekLabel = (w) => firstDay(w) === lastDay(w)
+  ? `du ${frDate(firstDay(w))}`
+  : `du ${frDate(firstDay(w))} au ${frDate(lastDay(w))}`;
+const monthOf = (w) => firstDay(w).slice(0, 7);
 function renderTrackWeeks(o, T) {
   const all = [...o.weeks].reverse();
-  const months = [...new Set(all.map((w) => w.week.slice(0, 7)))];
+  const months = [...new Set(all.map(monthOf))];
   const q = trackTeam.trim().toLowerCase();
   const keep = (b) => (trackRes === "all" || betStatus(b) === trackRes) && (!q || b.legs.some((l) => l.home.toLowerCase().includes(q) || l.away.toLowerCase().includes(q)));
   const weeks = all
-    .filter((w) => trackMonth === "all" || w.week.startsWith(trackMonth))
+    .filter((w) => trackMonth === "all" || monthOf(w) === trackMonth)
     .map((w) => ({ ...w, shown: w.bets.filter(keep) }))
     .filter((w) => w.shown.length);
   const nBets = weeks.reduce((a, w) => a + w.shown.length, 0);
@@ -1510,7 +1522,7 @@ function renderTrackWeeks(o, T) {
     </div>
     <div class="frow chips">
       <button type="button" class="chip" data-tmonth="all" aria-pressed="${trackMonth === "all"}">Toute la période</button>
-      ${months.map((m) => `<button type="button" class="chip" data-tmonth="${m}" aria-pressed="${trackMonth === m}">${MONTHS_LONG[Number(m.slice(5, 7)) - 1]} <em>${all.filter((w) => w.week.startsWith(m)).length}</em></button>`).join("")}
+      ${months.map((m) => `<button type="button" class="chip" data-tmonth="${m}" aria-pressed="${trackMonth === m}">${MONTHS_LONG[Number(m.slice(5, 7)) - 1]} <em>${all.filter((w) => monthOf(w) === m).length}</em></button>`).join("")}
     </div>`;
   if (!weeks.length) { document.getElementById("track-weeks").innerHTML = `<div class="empty"><b>Aucun pari avec ces filtres.</b></div>`; return; }
   const card = (b) => { const st = betStatus(b); return `<div class="tbet ${st}">
@@ -1525,7 +1537,7 @@ function renderTrackWeeks(o, T) {
     const isOpen = trackView === "detail" || trackOpenWeeks.has(w.week);
     return `<div class="tweek ${isOpen ? "open" : ""}">
       <button type="button" class="wrow" data-tw="${w.week}" aria-expanded="${isOpen}">
-        <span class="wl">Semaine du ${frDate(w.week)}${dots}</span>
+        <span class="wl">Semaine ${weekLabel(w)}${dots}</span>
         <span class="wr"><span class="n ${!settled.length ? "" : net >= 0 ? "good" : "bad"}">${head}</span><i class="chev">${isOpen ? "–" : "+"}</i></span>
       </button>
       ${isOpen ? `<div class="tbets">${w.shown.map(card).join("")}</div>` : ""}
