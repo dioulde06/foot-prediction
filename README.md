@@ -383,7 +383,10 @@ lien c'est partager le ticket.
 
 Le pari se place chez le bookmaker, jamais ici : un bouton ouvre son site, un
 autre copie le ticket, on reporte la cote obtenue et « J'ai misé » alimente le
-carnet. Aucun bookmaker régulé n'offre d'API de placement, et automatiser un
+carnet. Le ticket se vide alors et laisse un reçu à sa place — mise, cote,
+retour moyen, lien vers le carnet — qui disparaît à la sélection suivante. Rien
+n'est reproposé : poser un pari n'est pas une raison d'en recevoir un autre.
+Les issues déjà misées portent un ✓ vert dans la liste des matchs. Aucun bookmaker régulé n'offre d'API de placement, et automatiser un
 compte viole leurs conditions.
 
 ### Les scores en direct

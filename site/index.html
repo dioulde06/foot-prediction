@@ -467,6 +467,13 @@
   .quad b { display: block; font-size: 22px; font-weight: 500; letter-spacing: -.02em; }
   .quad b small { font-size: 12px; color: var(--ink-3); }
   .quad span { font-size: 12px; color: var(--ink-3); }
+  .treceipt { padding: 11px 14px 12px; display: grid; gap: 4px; border-bottom: 1px dashed var(--paper-line); }
+  .treceipt .rl1 { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-weight: 700; }
+  .treceipt .rl1 span { letter-spacing: .1em; text-transform: uppercase; font-size: 10.5px; }
+  .treceipt .rl2 { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--paper-ink-2); }
+  .treceipt .rlink { appearance: none; background: transparent; border: 0; cursor: pointer; font: inherit; font-size: 11.5px; color: var(--paper-ink); text-align: left; text-decoration: underline; padding: 5px 0 0; }
+  .pick.bet { border-color: var(--good); }
+  .pick .bt { font-style: normal; font-size: 9px; color: var(--good); margin-left: 3px; vertical-align: super; }
   .caveat { font-size: 12.5px; line-height: 1.5; color: var(--ink-3); margin: 0; padding: 12px 18px 14px; max-width: 80ch; }
 
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
@@ -804,8 +811,19 @@ const countdown = (m) => {
 };
 
 /* ---- bet log ---- */
-let carnet = [];
+let carnet = [], lastBet = null;
 try { carnet = JSON.parse(localStorage.getItem("barometre.carnet") || "[]"); if (!Array.isArray(carnet)) carnet = []; } catch (e) { carnet = []; }
+/* Outcomes already recorded, so the same pick is not taken twice unnoticed. */
+const betOn = new Map();
+function refreshBetMarks() {
+  betOn.clear();
+  for (const c of carnet) for (const l of c.legs) {
+    const key = `${l.date}|${l.home}|${l.away}`;
+    if (!betOn.has(key)) betOn.set(key, new Set());
+    betOn.get(key).add(PICK_INDEX[l.pick]);
+  }
+}
+const betMark = (m, i) => { const outs = betOn.get(`${m.date}|${m.home}|${m.away}`); return outs ? outs.has(i) : false; };
 function saveCarnet() { try { localStorage.setItem("barometre.carnet", JSON.stringify(carnet)); } catch (e) { /* ignore */ } }
 
 /* ---- pools ---- */
@@ -955,9 +973,9 @@ function pickButtons(m, compact) {
   if (st !== "open") {
     return `<div class="picks locked">${OUT.map((o, i) => `<span class="pick ${o.cls} off ${m.result === o.key ? "won" : ""}"><b class="n">${m.odds ? legOdds(m, i).toFixed(2) : "–"}</b>${compact ? "" : `<span class="n">${p0(m.model[i])}</span>`}</span>`).join("")}</div>`;
   }
-  return `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls} ${m.odds ? "" : "fair"}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
+  return `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls} ${m.odds ? "" : "fair"}${betMark(m, i) ? " bet" : ""}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
       aria-label="${esc(o.name)}, ${m.odds ? `cote ${legOdds(m, i).toFixed(2)}` : `prix juste ${(1 / m.model[i]).toFixed(2)}`}" title="${esc(o.name)} · nous ${p0(m.model[i])} %${m.odds ? ` · marché ${p0(m.market[i])} %` : " · pas encore coté"}">
-      <b class="n">${m.odds ? "" : "≈"}${legOdds(m, i).toFixed(2)}${move(m, i) ? `<i class="mv ${move(m, i)}" title="${move(m, i) === "up" ? "cote montée" : "cote baissée"} depuis ${m.oddsFirst[i].toFixed(2)}">${move(m, i) === "up" ? "↑" : "↓"}</i>` : ""}</b>
+      <b class="n">${m.odds ? "" : "≈"}${legOdds(m, i).toFixed(2)}${move(m, i) ? `<i class="mv ${move(m, i)}" title="${move(m, i) === "up" ? "cote montée" : "cote baissée"} depuis ${m.oddsFirst[i].toFixed(2)}">${move(m, i) === "up" ? "↑" : "↓"}</i>` : ""}${betMark(m, i) ? `<i class="bt" title="déjà misé sur ce résultat, c'est dans ton carnet">✓</i>` : ""}</b>
       ${compact ? "" : `<span class="n"><em>${p0(m.model[i])}</em>${m.odds ? ` · ${p0(m.market[i])}` : ""}</span>`}
     </button>`).join("")}</div>`;
 }
@@ -1290,8 +1308,9 @@ function renderTicket() {
   const legsEl = document.getElementById("t-legs"), sums = document.getElementById("t-sums");
   const count = document.getElementById("ticket-count");
   count.textContent = picks.size;
+  if (picks.size) lastBet = null;
   if (picks.size === 0) {
-    legsEl.innerHTML = `<div class="tempty"><b>Aucune sélection.</b>Clique sur une cote dans Matchs, ou mets une proposition sur le ticket.</div>`;
+    legsEl.innerHTML = `${lastBet ? receipt(lastBet) : ""}<div class="tempty"><b>${lastBet ? "Ticket vidé." : "Aucune sélection."}</b>Clique sur une cote dans Matchs, ou mets une proposition sur le ticket.</div>`;
     sums.innerHTML = ""; document.getElementById("t-hand").innerHTML = ""; document.getElementById("minibar").hidden = true; writeHash(); return;
   }
   const legs = [...picks.entries()].sort((a, b) => byId(a[0]).date.localeCompare(byId(b[0]).date));
@@ -1367,8 +1386,25 @@ function recordBet() {
   let pq = 1, odds = 1;
   const rows = legs.map(([id, o]) => { const m = byId(id); pq *= legQ(m, o); odds *= legOdds(m, o); return { home: m.home, away: m.away, date: m.date, time: timeLocal(m), pick: OUT[o].short, odds: legOdds(m, o), fair: !m.odds }; });
   const gotEl = document.getElementById("got"), got = gotEl && Number(gotEl.value) >= 1.01 ? Number(gotEl.value) : odds;
-  carnet.unshift({ id: Date.now(), at: DATA.meta.today, book, stake, odds: got, ours: odds, pq, legs: rows });
-  saveCarnet(); renderCarnet();
+  const bet = { id: Date.now(), at: DATA.meta.today, book, stake, odds: got, ours: odds, pq, legs: rows };
+  carnet.unshift(bet);
+  saveCarnet();
+  // The ticket is spent: it empties, and the receipt takes its place until the
+  // next selection. Nothing is proposed in its stead — placing a bet is not a
+  // reason to be handed another one.
+  lastBet = bet;
+  picks.clear(); loadedProp = null; collapsed.clear();
+  renderCarnet(); rerender();
+}
+function receipt(b) {
+  const nDays = new Set(b.legs.map((l) => l.date)).size;
+  const name = bookOf(b.book) ? bookOf(b.book).name : b.book;
+  return `<div class="treceipt">
+    <div class="rl1"><span>✓ Pari enregistré</span><b class="n">${money(b.stake)} € @${b.odds.toFixed(2)}</b></div>
+    <div class="rl2"><span>${esc(name)}</span><span>${b.legs.length} sélection${b.legs.length > 1 ? "s" : ""} · ${nDays} journée${nDays > 1 ? "s" : ""}</span></div>
+    <div class="rl2"><span>En moyenne, tu récupères</span><b class="n">${money(b.stake * b.pq * b.odds)} €</b></div>
+    <button type="button" class="rlink" data-view="bilan">Voir dans le carnet →</button>
+  </div>`;
 }
 function settle(bet) {
   const legs = bet.legs.map((l) => {
@@ -1384,6 +1420,7 @@ function settle(bet) {
   return { legs, status, payout: status === "won" ? bet.stake * bet.odds : status === "lost" ? 0 : null };
 }
 function renderCarnet() {
+  refreshBetMarks();
   const el = document.getElementById("carnet"), sub = document.getElementById("carnet-sub");
   if (!carnet.length) { sub.textContent = ""; el.innerHTML = `<div class="empty"><b>Aucun pari enregistré.</b><span>Après avoir misé chez ton bookmaker, clique « J'ai misé » sur le ticket.</span></div>`; renderBudget(); return; }
   const settled = carnet.map((c) => ({ c, s: settle(c) }));
@@ -1573,7 +1610,7 @@ function openRail(on) { document.getElementById("rail").classList.toggle("open",
 document.addEventListener("click", (e) => {
   const t = e.target;
   const nav = t.closest("[data-view]");
-  if (nav) { e.preventDefault(); setView(nav.dataset.view); return; }
+  if (nav) { e.preventDefault(); setView(nav.dataset.view); openRail(false); return; }
   if (t.closest("#coach-ok")) { document.getElementById("coach").hidden = true; try { localStorage.setItem("barometre.coach", "1"); } catch (err) { /* ignore */ } return; }
   if (t.closest("#ticketbtn")) {
     if (window.matchMedia("(max-width: 980px)").matches) { openRail(!document.getElementById("rail").classList.contains("open")); return; }
@@ -1644,7 +1681,7 @@ document.addEventListener("click", (e) => {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt("Copie ce lien :", url)); else window.prompt("Copie ce lien :", url);
     return;
   }
-  if (t.closest("[data-bet]")) { recordBet(); toast("Ajouté au carnet, onglet Bilan"); return; }
+  if (t.closest("[data-bet]")) { recordBet(); toast("Pari enregistré · ticket vidé"); return; }
   const tsrc = t.closest("[data-tsrc]");
   if (tsrc) { trackSrc = tsrc.dataset.tsrc; trackOpenWeeks.clear(); renderTrack(); return; }
   const tob = t.closest("[data-tobj]");
