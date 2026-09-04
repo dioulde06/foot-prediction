@@ -3,6 +3,8 @@
 import pytest
 
 from src.data.team_mapping import (
+    ESPN_LEAGUES,
+    ESPN_TO_CANONICAL,
     UNDERSTAT_TO_CANONICAL,
     UnmappedTeamError,
     to_canonical,
@@ -47,3 +49,30 @@ def test_the_mapping_is_not_an_identity_anywhere() -> None:
     """An identity entry is dead weight and hides a real mismatch."""
     same = [k for k, v in UNDERSTAT_TO_CANONICAL.items() if k == v]
     assert not same, same
+
+
+def test_a_known_espn_name_is_translated() -> None:
+    assert to_canonical("Nottingham Forest", "espn") == "Nott'm Forest"
+    assert to_canonical("Internazionale", "espn") == "Inter"
+    assert to_canonical("Arsenal", "espn") == "Arsenal"
+
+
+def test_no_two_espn_names_collide_onto_one_canonical_name() -> None:
+    values = list(ESPN_TO_CANONICAL.values())
+    assert len(values) == len(set(values)), "two ESPN names map to the same club"
+
+
+def test_the_espn_mapping_is_not_an_identity_anywhere() -> None:
+    same = [k for k, v in ESPN_TO_CANONICAL.items() if k == v]
+    assert not same, same
+
+
+def test_the_five_leagues_have_an_espn_slug() -> None:
+    assert len(ESPN_LEAGUES) == 5
+    assert set(ESPN_LEAGUES.values()) == {
+        "Premier League",
+        "La Liga",
+        "Bundesliga",
+        "Serie A",
+        "Ligue 1",
+    }

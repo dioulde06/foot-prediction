@@ -341,3 +341,13 @@ def test_the_page_shows_the_latest_price_and_remembers_the_first() -> None:
     assert match["odds"][0] == 1.8
     assert match["oddsFirst"] == [2.0, 3.4, 3.6]
     assert match["oddsFirstAt"] == "2026-09-01 09:00"
+
+
+def test_the_page_carries_what_it_needs_to_call_the_live_feed_itself() -> None:
+    live = build()["meta"]["live"]
+    assert live["base"].startswith("https://")
+    assert len(live["leagues"]) == 5
+    assert live["names"]["Manchester United"] == "Man United"
+    # The window the page asks for must cover the played matches it still shows,
+    # otherwise a bet from last week never settles.
+    assert live["windowDays"] == site.KEEP_PLAYED_DAYS

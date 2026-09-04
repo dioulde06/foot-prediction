@@ -23,7 +23,7 @@ fetch-current:
 merge:
 	uv run python -m src.data.merge $(if $(FORCE),--force,)
 
-# Team names of each source, and the ones that still need a mapping entry.
+# Team names of each source, live feed included, and the ones still unmapped.
 audit-teams:
 	uv run python -m scripts.audit_teams
 

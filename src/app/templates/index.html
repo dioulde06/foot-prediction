@@ -211,6 +211,10 @@
   .more:hover { color: var(--ink); border-color: var(--ink-3); background: var(--panel-3); }
   .more[aria-expanded="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
   @media (max-width: 720px) { .more { width: 100%; height: 30px; border-radius: var(--r-sm); } }
+  .lv { font-style: normal; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; border: 1px solid var(--line); border-radius: 999px; padding: 0 5px; color: var(--ink-3); white-space: nowrap; }
+  .lv.on { border-color: var(--stamp); color: var(--stamp); }
+  .lv.on::before { content: ""; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--stamp); margin-right: 4px; vertical-align: middle; animation: blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
   .mv { font-style: normal; font-size: 10px; margin-left: 3px; vertical-align: super; }
   .mv.down { color: var(--stamp); } .mv.up { color: var(--good); }
   .moveline { margin-top: 6px; font-size: 11px; color: var(--ink-3); }
@@ -507,6 +511,7 @@
           <p id="month-sub"></p>
         </div>
         <div class="oddsrc" id="oddsrc"></div>
+        <div class="oddsrc" id="livesrc" hidden></div>
       </div>
       <div class="board">
         <div class="filters">
@@ -757,7 +762,7 @@ const moveLine = (m) => (m.odds && m.oddsFirst && OUT.some((_, i) => move(m, i))
 const legQ = (m, o) => m.odds ? m.market[o] : m.model[o];
 
 /* ---- time ---- */
-const NOW = Date.now();
+let NOW = Date.now();
 const kick = (m) => new Date(m.kickoff);
 const timeLocal = (m) => kick(m).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const stateOf = (m) => m.result ? "done" : (kick(m).getTime() <= NOW ? "live" : "open");
@@ -899,7 +904,9 @@ function pickButtons(m, compact) {
   const st = stateOf(m);
   if (st !== "open") {
     return `<div class="picks locked">${OUT.map((o, i) => `<span class="pick ${o.cls} off ${m.result === o.key ? "won" : ""}"><b class="n">${m.odds ? legOdds(m, i).toFixed(2) : "–"}</b>${compact ? "" : `<span class="n">${p0(m.model[i])}</span>`}</span>`).join("")}
-      <span class="lockmsg">${st === "done" ? `Terminé${m.score ? ` ${esc(m.score)}` : ""}` : "En cours"}</span></div>`;
+      <span class="lockmsg">${st === "done"
+        ? `Terminé${m.score ? ` ${esc(m.score)}` : ""}${m.provisional ? ` <i class="lv">direct</i>` : ""}`
+        : `${m.score ? `${esc(m.score)} ` : ""}${m.live ? esc(m.live) : "En cours"}${m.live ? ` <i class="lv on">direct</i>` : ""}`}</span></div>`;
   }
   return `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls} ${m.odds ? "" : "fair"}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
       aria-label="${esc(o.name)}, ${m.odds ? `cote ${legOdds(m, i).toFixed(2)}` : `prix juste ${(1 / m.model[i]).toFixed(2)}`}" title="${esc(o.name)} · nous ${p0(m.model[i])} %${m.odds ? ` · marché ${p0(m.market[i])} %` : " · pas encore coté"}">
@@ -1324,7 +1331,7 @@ function settle(bet) {
     const idx = PICK_INDEX[l.pick];
     const closing = m && m.closing && idx !== undefined ? m.closing[idx] : null;
     const clv = closing && !l.fair ? l.odds / closing - 1 : null;
-    return { ...l, status: res === null ? "open" : (res === l.pick ? "won" : "lost"), score: m && m.score, closing, clv };
+    return { ...l, status: res === null ? "open" : (res === l.pick ? "won" : "lost"), score: m && m.score, live: m && m.live, provisional: !!(m && m.provisional), closing, clv };
   });
   const status = legs.some((l) => l.status === "lost") ? "lost" : legs.every((l) => l.status === "won") ? "won" : "open";
   return { legs, status, payout: status === "won" ? bet.stake * bet.odds : status === "lost" ? 0 : null };
@@ -1352,7 +1359,7 @@ function renderCarnet() {
     </div>
     ${settled.map(({ c, s: st }) => `<div class="cbet ${st.status}">
       <div class="cb1"><span>${frDate(c.at)} · ${esc(bookOf(c.book) ? bookOf(c.book).name : c.book)} · ${c.legs.length} sélection${c.legs.length > 1 ? "s" : ""}</span><span class="n">${money(c.stake)} € @${c.odds.toFixed(2)}${c.ours && Math.abs(c.ours - c.odds) > 0.005 ? ` <small>(nous ${c.ours.toFixed(2)})</small>` : ""}</span></div>
-      <div class="cb2">${st.legs.map((l) => `<span class="${l.status}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.status === "won" ? " ✓" : l.status === "lost" ? " ✗" : ""}${l.clv !== null ? ` <small>clôture ${l.clv >= 0 ? "+" : ""}${p1(l.clv)} %</small>` : ""}</span>`).join("")}</div>
+      <div class="cb2">${st.legs.map((l) => `<span class="${l.status}">${esc(l.home)} – ${esc(l.away)} <b>${l.pick}</b>${l.status === "won" ? " ✓" : l.status === "lost" ? " ✗" : ""}${l.score ? ` <small>${esc(l.score)}${l.live ? ` ${esc(l.live)}` : ""}</small>` : ""}${l.live ? ` <i class="lv on">direct</i>` : l.provisional ? ` <i class="lv">direct</i>` : ""}${l.clv !== null ? ` <small>clôture ${l.clv >= 0 ? "+" : ""}${p1(l.clv)} %</small>` : ""}</span>`).join("")}</div>
       <div class="cb3"><span>${st.status === "open" ? `si ça passe ${money(c.stake * c.odds)} € · attendu ${money(c.stake * c.pq * c.odds)} €` : `réalisé ${money(st.payout)} € · attendu ${money(c.stake * c.pq * c.odds)} €`}</span><span class="status ${st.status}">${LABEL[st.status]}</span><button type="button" class="kill" data-del="${c.id}" aria-label="Supprimer ce pari">×</button></div>
     </div>`).join("")}
     ${done.length ? "" : `<p class="caveat">${esc(DATA.meta.resultsNote)}</p>`}`;
@@ -1607,6 +1614,118 @@ document.getElementById("search").addEventListener("input", (e) => { search = e.
 document.getElementById("target").addEventListener("input", (e) => { target = Number(e.target.value); document.getElementById("target-out").textContent = target.toFixed(1); syncLoaded(); renderProps(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") openRail(false); });
 
+/* ---------------- live scores ---------------- */
+/* ESPN's public scoreboard, called straight from the browser: no key, CORS open,
+   no server of ours in the way. It patches what the page shows and how the bet
+   log settles, nothing else. The standing, the bins and the track record are
+   computed in Python on the committed results and are never touched here: a
+   provisional score must not move a calibration number. */
+const LIVE = DATA.meta.live;
+const fixtures = new Map(DATA.upcoming.map((m) => [`${m.home}|${m.away}`, m]));
+const TEAMS = new Set(DATA.upcoming.flatMap((m) => [m.home, m.away]));
+DATA.upcoming.forEach((m) => { m.official = m.result !== null; m.live = null; m.provisional = false; });
+let liveAt = null, liveMiss = 0, liveClash = 0, liveDown = 0, liveTimer = null;
+const PLAY_MS = 165 * 6e4;
+
+const ymd = (offset) => new Date(Date.parse(`${DATA.meta.today}T12:00:00Z`) + offset * 864e5).toISOString().slice(0, 10).replace(/-/g, "");
+const liveUrl = (slug) => `${LIVE.base}/${slug}/scoreboard?dates=${ymd(-LIVE.windowDays)}-${ymd(1)}&limit=1000`;
+/* What the page is showing right now. Re-rendering only when this moves keeps
+   the visitor's focus and selections intact between two ticks. */
+const sigOf = () => DATA.upcoming.map((m) => `${stateOf(m)}${m.score || ""}${m.live || ""}${countdown(m)}`).join(",");
+
+function patchLive(events) {
+  let goals = 0;
+  liveMiss = 0; liveClash = 0;
+  for (const e of events) {
+    const c = e.competitions && e.competitions[0];
+    if (!c || !c.competitors || !c.status) continue;
+    const home = c.competitors.find((x) => x.homeAway === "home");
+    const away = c.competitors.find((x) => x.homeAway === "away");
+    if (!home || !away) continue;
+    const nameOf = (x) => LIVE.names[x.team.displayName] || x.team.displayName;
+    const m = fixtures.get(`${nameOf(home)}|${nameOf(away)}`);
+    if (!m) {
+      // A fixture we never published is normal: the prediction log starts where
+      // it starts. A club name matching nothing we know is not: that is a
+      // missing mapping entry, and it would quietly stop settling that club's
+      // bets. It gets counted and said on the page.
+      if (!TEAMS.has(nameOf(home)) || !TEAMS.has(nameOf(away))) liveMiss++;
+      continue;
+    }
+    const state = c.status.type.state;
+    if (state === "pre") continue;
+    const score = `${home.score}-${away.score}`;
+    const over = state === "post" && c.status.type.completed === true;
+    const result = !over ? null : Number(home.score) > Number(away.score) ? "H" : Number(home.score) < Number(away.score) ? "A" : "D";
+    // The committed result wins over the live one. A disagreement is counted
+    // and said on the page rather than silently resolved either way.
+    if (m.official) { if (result !== null && m.result !== result) liveClash++; continue; }
+    if (m.score && m.score !== score) goals++;
+    m.score = score;
+    // Only a finished match settles a bet: a 1-0 at the 60th minute is a score
+    // to show, not a result to pay.
+    m.live = over ? null : (c.status.type.shortDetail || c.status.displayClock || "En cours");
+    if (result !== null) { m.result = result; m.provisional = true; }
+  }
+  return goals;
+}
+
+async function refreshLive() {
+  const before = sigOf();
+  const answers = await Promise.allSettled(Object.keys(LIVE.leagues).map(async (slug) => {
+    const answer = await fetch(liveUrl(slug), { cache: "no-store" });
+    if (!answer.ok) throw new Error(`${slug} ${answer.status}`);
+    return (await answer.json()).events || [];
+  }));
+  const down = answers.filter((a) => a.status === "rejected");
+  liveDown = down.length;
+  down.forEach((a) => console.warn("direct indisponible :", a.reason));
+  const goals = patchLive(answers.flatMap((a) => a.status === "fulfilled" ? a.value : []));
+  NOW = Date.now();
+  liveAt = new Date();
+  if (sigOf() !== before) { rerender(); renderCarnet(); renderCert(); }
+  renderLive();
+  if (goals) toast(goals > 1 ? `${goals} buts marqués` : "But !");
+}
+
+function renderLive() {
+  const el = document.getElementById("livesrc");
+  if (!liveAt && !liveDown) { el.hidden = true; return; }
+  el.hidden = false;
+  const running = DATA.upcoming.filter((m) => m.live).length;
+  const prov = DATA.upcoming.filter((m) => m.provisional).length;
+  const plural = (n) => n > 1 ? "s" : "";
+  const notes = [
+    running ? `${running} match${plural(running)} en cours` : "aucun match en cours",
+    liveAt ? `vérifié à ${liveAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "",
+    prov ? `${prov} résultat${plural(prov)} provisoire${plural(prov)}` : "",
+    liveMiss ? `${liveMiss} match${plural(liveMiss)} du direct sur un nom inconnu, mapping à compléter` : "",
+    liveClash ? `${liveClash} écart${plural(liveClash)} avec le résultat officiel` : "",
+    liveDown ? `${liveDown} championnat${plural(liveDown)} injoignable${plural(liveDown)}` : "",
+  ].filter(Boolean);
+  el.innerHTML = `<b>Direct${running ? ` <i class="lv on">en cours</i>` : ""}</b><span>${notes.join(" · ")}</span>`;
+}
+
+/* 60 s while a match is on the clock, otherwise one wake-up at the next
+   kick-off, otherwise nothing: no polling for the sake of polling. */
+function liveDelay() {
+  const now = Date.now();
+  const starts = DATA.upcoming.filter((m) => !m.official).map((m) => kick(m).getTime());
+  if (starts.some((t) => t <= now + 6e4 && now < t + PLAY_MS)) return 6e4;
+  const next = starts.filter((t) => t > now).sort((a, b) => a - b)[0];
+  return next === undefined ? null : Math.min(next - now, 36e5);
+}
+function liveLoop() {
+  clearTimeout(liveTimer);
+  refreshLive().finally(() => {
+    const delay = liveDelay();
+    if (delay !== null) liveTimer = setTimeout(liveLoop, delay);
+  });
+}
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && (!liveAt || Date.now() - liveAt > 3e4)) liveLoop();
+});
+
 /* ---------------- boot ---------------- */
 renderCert(); renderBins(); renderBook(); renderCarnet(); setTrackStake(trackStake); renderTrack();
 const fromLink = readHash();
@@ -1615,6 +1734,7 @@ if (!fromLink) { const first = proposals()[0]; if (first) for (const [id, o] of 
 rerender();
 setView(currentView, false);
 try { if (!localStorage.getItem("barometre.coach")) document.getElementById("coach").hidden = false; } catch (e) { document.getElementById("coach").hidden = false; }
+liveLoop();
 </script>
 </body>
 </html>

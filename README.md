@@ -35,6 +35,8 @@ Deux sources, jointes dans `data/processed/matches.parquet` (33 colonnes).
 - 6 saisons : 2020-21 à 2025-26
 - **football-data.co.uk** → résultats, statistiques de match, cotes de clôture
 - **Understat** → xG, xG hors penalty, PPDA, passes profondes
+- **ESPN** (scoreboard public) → scores en direct, appelé par le navigateur,
+  jamais écrit dans le dataset
 
 Taux de jointure : **100.00 %**. La clé est `(saison, domicile, extérieur)` et
 non la date : dans un championnat aller-retour cette triple est exactement
@@ -43,9 +45,10 @@ sur 18 matchs à cause des coups d'envoi tardifs et des reports. Joindre sur la
 date exigerait une fenêtre de tolérance, ce qui est l'équivalent temporel du
 fuzzy matching et donc interdit ici.
 
-Les noms d'équipes sont réconciliés par un dict explicite de **35 entrées** dans
-`src/data/team_mapping.py`, les noms football-data servant de forme canonique.
-Un nom inconnu lève `UnmappedTeamError`. `make audit-teams` liste ce qui manque.
+Les noms d'équipes sont réconciliés par des dicts explicites dans
+`src/data/team_mapping.py`, les noms football-data servant de forme canonique :
+**37 entrées** pour Understat, **43** pour ESPN. Un nom inconnu lève
+`UnmappedTeamError`. `make audit-teams` liste ce qui manque, dataset et direct.
 
 Trois jeux de cotes de **clôture** sont conservés, jamais d'ouverture : moyenne
 de marché (`avg`, 100 % de couverture), Bet365 (`b365`, 100 %) et Pinnacle
@@ -77,7 +80,7 @@ uv run python scripts/run_baselines.py            # tableau des 3 baselines
 uv run python scripts/run_baselines.py --book ps  # contrôle croisé Pinnacle
 
 make merge         # joint les sources
-make audit-teams   # noms d'équipes non résolus
+make audit-teams   # noms d'équipes non résolus (dataset et direct ESPN)
 
 uv run jupyter lab notebooks/
 ```
@@ -349,8 +352,9 @@ lien c'est partager le ticket.
   championnat, repliés avec un résumé (favoris nets, matchs serrés), en vue
   compacte ou détaillée, filtrés par jour, championnat, équipe, matchs cotés,
   mes sélections. Heures dans le fuseau du visiteur, compte à rebours sous
-  24 h, verrouillage au coup d'envoi, score une fois joué. Un match pas encore
-  coté se joue à notre prix juste (1 ÷ probabilité, sans marge), marqué ≈. La
+  24 h, verrouillage au coup d'envoi, score en direct puis final. Un match pas
+  encore coté se joue à notre prix juste (1 ÷ probabilité, sans marge), marqué
+  ≈. La
   fiche d'un match donne forme, buteurs probables et marchés buts.
 - **Propositions** : trois combinés sur les matchs filtrés, de 2 à 6
   sélections, quatre objectifs (cote cible, marge minimale, consensus
@@ -374,6 +378,29 @@ Le pari se place chez le bookmaker, jamais ici : un bouton ouvre son site, un
 autre copie le ticket, on reporte la cote obtenue et « J'ai misé » alimente le
 carnet. Aucun bookmaker régulé n'offre d'API de placement, et automatiser un
 compte viole leurs conditions.
+
+### Les scores en direct
+
+Le résultat officiel vient de football-data.co.uk, qui ne rafraîchit son
+fichier de saison courante que quelques fois par semaine : un pari de la veille
+restait « en cours » pendant des jours. La page appelle donc elle-même le
+scoreboard public d'ESPN — pas de clé, `access-control-allow-origin: *`, aucun
+serveur de notre côté — sur les 5 championnats et une fenêtre de 11 jours.
+
+- Au chargement, à chaque retour sur l'onglet, puis toutes les 60 s tant qu'un
+  match est en cours. Sinon un seul réveil au prochain coup d'envoi, sinon
+  rien : pas de polling pour le plaisir.
+- Un match en cours affiche son score et sa minute, marqués « direct », mais ne
+  solde **jamais** un pari. Seul un match terminé écrit un résultat, marqué
+  provisoire jusqu'à ce que le parquet le confirme.
+- Un but redessine les matchs, les propositions, le ticket et le carnet, sans
+  recharger la page ni perdre les sélections en cours.
+- Le résultat officiel prime toujours sur le direct. Un désaccord, un nom
+  d'équipe inconnu ou un flux injoignable est compté et affiché sur la page,
+  jamais avalé en silence.
+- Rien de tout cela n'entre dans `data/processed/matches.parquet`. Le classement
+  de calibration, les tranches et le Bilan restent calculés en Python sur les
+  résultats officiels : un score provisoire ne déplace aucune métrique.
 
 ### Ce qu'un bookmaker ne montre pas
 

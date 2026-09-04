@@ -40,6 +40,11 @@ from src.app.scorers import (
     goal_markets,
 )
 from src.data.schedule import SCHEDULE_PARQUET
+from src.data.team_mapping import (
+    ESPN_LEAGUES,
+    ESPN_SCOREBOARD,
+    ESPN_TO_CANONICAL,
+)
 from src.eval.baselines import devig_power
 from src.eval.metrics import (
     BIN_LABELS,
@@ -466,8 +471,21 @@ def build_data(
             "books": _books(odds),
             "scorers": {"minMinutes": MIN_MINUTES, "priorMatches": PRIOR_MINUTES // 90},
             "resultsNote": (
-                "Les résultats arrivent deux fois par jour, une fois les matchs joués."
+                "Les scores en direct arrivent d'ESPN pendant les matchs. Le "
+                "résultat officiel, celui qui compte pour la calibration, suit "
+                "deux fois par jour."
             ),
+            # Everything the browser needs to call ESPN's scoreboard itself and
+            # pair a live fixture with a published one. Live scores are display
+            # and bet settlement only: they never enter the dataset, so the
+            # standing, the bins and the track record stay on the committed
+            # results.
+            "live": {
+                "base": ESPN_SCOREBOARD,
+                "leagues": ESPN_LEAGUES,
+                "names": ESPN_TO_CANONICAL,
+                "windowDays": KEEP_PLAYED_DAYS,
+            },
         },
         "upcoming": _matches(joined, scorers, played, today),
         "standing": standing,
