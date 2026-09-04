@@ -184,6 +184,10 @@
   .teams span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .teams span:last-child { text-align: right; }
   .teams i { font-style: normal; font-family: "Sometype Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--ink-3); letter-spacing: .1em; flex: none; padding: 0 4px; }
+  .teams i.sc { font-size: 16px; font-weight: 700; color: var(--ink); letter-spacing: .02em; }
+  .row:not(.compact) .teams i.sc { font-size: 19px; }
+  .when .st { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; color: var(--ink-2); }
+  .when .st.on { color: var(--stamp); }
   .rails { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 3px 8px; margin-top: 8px; align-items: center; }
   .rails .label { font-size: 9.5px; text-align: right; }
   .prail { display: flex; gap: 2px; height: 10px; }
@@ -207,7 +211,6 @@
   .pick.fair[aria-pressed="true"] b { color: var(--panel); }
   .pick.off { opacity: .4; cursor: default; }
   .pick.off.won { opacity: 1; border-color: var(--ink); }
-  .lockmsg { position: absolute; inset: 0; display: grid; place-items: center; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; font-weight: 700; color: var(--ink); background: color-mix(in srgb, var(--panel) 55%, transparent); border-radius: var(--r-sm); }
   .more { appearance: none; background: none; border: 1px solid var(--line-soft); border-radius: 50%; width: 30px; height: 30px; font-size: 16px; color: var(--ink-3); display: grid; place-items: center; transition: background 120ms ease; }
   .more:hover { color: var(--ink); border-color: var(--ink-3); background: var(--panel-3); }
   .more[aria-expanded="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
@@ -777,6 +780,15 @@ let NOW = Date.now();
 const kick = (m) => new Date(m.kickoff);
 const timeLocal = (m) => kick(m).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 const stateOf = (m) => m.result ? "done" : (kick(m).getTime() <= NOW ? "live" : "open");
+/* Score between the team names, state under the time: a finished match reads
+   like a result, not like a price list with a caption on top of it. */
+const scoreOf = (m) => m.score ? m.score.replace("-", " – ") : null;
+const stateLabel = (m) => {
+  const st = stateOf(m);
+  if (st === "done") return `<em class="st">Terminé${m.provisional ? ` <i class="lv">direct</i>` : ""}</em>`;
+  if (st === "live") return `<em class="st on">${m.live ? esc(m.live) : "En cours"} <i class="lv on">direct</i></em>`;
+  return countdown(m) ? `<em class="cd">${countdown(m)}</em>` : "";
+};
 const countdown = (m) => {
   const ms = kick(m).getTime() - NOW;
   if (stateOf(m) !== "open" || ms > 36e5 * 24) return "";
@@ -925,10 +937,7 @@ function pickButtons(m, compact) {
   const chosen = picks.get(m.id);
   const st = stateOf(m);
   if (st !== "open") {
-    return `<div class="picks locked">${OUT.map((o, i) => `<span class="pick ${o.cls} off ${m.result === o.key ? "won" : ""}"><b class="n">${m.odds ? legOdds(m, i).toFixed(2) : "–"}</b>${compact ? "" : `<span class="n">${p0(m.model[i])}</span>`}</span>`).join("")}
-      <span class="lockmsg">${st === "done"
-        ? `Terminé${m.score ? ` ${esc(m.score)}` : ""}${m.provisional ? ` <i class="lv">direct</i>` : ""}`
-        : `${m.score ? `${esc(m.score)} ` : ""}${m.live ? esc(m.live) : "En cours"}${m.live ? ` <i class="lv on">direct</i>` : ""}`}</span></div>`;
+    return `<div class="picks locked">${OUT.map((o, i) => `<span class="pick ${o.cls} off ${m.result === o.key ? "won" : ""}"><b class="n">${m.odds ? legOdds(m, i).toFixed(2) : "–"}</b>${compact ? "" : `<span class="n">${p0(m.model[i])}</span>`}</span>`).join("")}</div>`;
   }
   return `<div class="picks">${OUT.map((o, i) => `<button type="button" class="pick ${o.cls} ${m.odds ? "" : "fair"}" aria-pressed="${chosen === i}" data-m="${m.id}" data-o="${i}"
       aria-label="${esc(o.name)}, ${m.odds ? `cote ${legOdds(m, i).toFixed(2)}` : `prix juste ${(1 / m.model[i]).toFixed(2)}`}" title="${esc(o.name)} · nous ${p0(m.model[i])} %${m.odds ? ` · marché ${p0(m.market[i])} %` : " · pas encore coté"}">
@@ -939,8 +948,8 @@ function pickButtons(m, compact) {
 function rowCompact(m) {
   return `<div class="row compact ${picks.has(m.id) ? "picked" : ""}">
     <div class="rmain">
-      <div class="when"><b class="n">${timeLocal(m)}</b><span>${view === "day" ? esc(m.league) : frDate(m.date)}</span>${countdown(m) ? `<em class="cd">${countdown(m)}</em>` : ""}</div>
-      <div class="fixture"><div class="teams"><span>${esc(m.home)}</span><i>–</i><span>${esc(m.away)}</span></div></div>
+      <div class="when"><b class="n">${timeLocal(m)}</b><span>${view === "day" ? esc(m.league) : frDate(m.date)}</span>${stateLabel(m)}</div>
+      <div class="fixture"><div class="teams"><span>${esc(m.home)}</span>${scoreOf(m) ? `<i class="sc n">${esc(scoreOf(m))}</i>` : "<i>–</i>"}<span>${esc(m.away)}</span></div></div>
       ${pickButtons(m, true)}
       ${m.cards ? `<button type="button" class="more" data-d="${m.id}" aria-expanded="${open.has(m.id)}" aria-label="Fiche du match" title="Fiche : forme, buteurs, buts">${open.has(m.id) ? "–" : "+"}</button>` : "<span></span>"}
     </div>
@@ -951,9 +960,9 @@ function rowDetailed(m) {
   const rail = (probs, cls) => `<span class="prail ${cls}">${OUT.map((o, i) => `<i class="${o.cls}" style="width:${100 * probs[i]}%"></i>`).join("")}</span>`;
   return `<div class="row ${picks.has(m.id) ? "picked" : ""}">
     <div class="rmain">
-      <div class="when"><b class="n">${timeLocal(m)}</b><span>${esc(m.league)}</span><em>${frDate(m.date)}</em>${countdown(m) ? `<em class="cd">${countdown(m)}</em>` : ""}</div>
+      <div class="when"><b class="n">${timeLocal(m)}</b><span>${esc(m.league)}</span><em>${frDate(m.date)}</em>${stateLabel(m)}</div>
       <div class="fixture">
-        <div class="teams"><span>${esc(m.home)}</span><i>${m.odds ? `MARGE ${p1(overroundOf(m))} %` : "≈"}</i><span>${esc(m.away)}</span></div>
+        <div class="teams"><span>${esc(m.home)}</span>${scoreOf(m) ? `<i class="sc n">${esc(scoreOf(m))}</i>` : `<i>${m.odds ? `MARGE ${p1(overroundOf(m))} %` : "≈"}</i>`}<span>${esc(m.away)}</span></div>
         <div class="rails">
           <span class="label">Nous</span>${rail(m.model, "model")}
           ${m.market ? `<span class="label">Marché</span>${rail(m.market, "market")}` : ""}
