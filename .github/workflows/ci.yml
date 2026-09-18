@@ -1,0 +1,28 @@
+name: ci
+
+# The publish job only publishes. Without this, ruff/mypy/pytest are only ever
+# run by hand, and a red `make lint` can sit in main unnoticed -- which is how
+# it got there.
+on:
+  push:
+    branches: [main]
+    # The publish bot only ever writes these, and no test reads them.
+    paths-ignore: ["data/**", "predictions/**", "site/**"]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.11"
+          enable-cache: true
+
+      - run: uv sync --frozen
+
+      - run: make lint
+
+      - run: make test

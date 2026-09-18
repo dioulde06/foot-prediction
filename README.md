@@ -115,6 +115,7 @@ data/
   processed/  dataset joint
 models/       modèle entraîné et métadonnées
 .github/workflows/publish.yml   le robot de publication
+.github/workflows/ci.yml        ruff + mypy + pytest sur chaque push et PR
 ```
 
 `src/app/` et `configs/` ne figurent pas dans la structure décrite par
@@ -468,6 +469,10 @@ commit fait à la main.
 Pour que ça tourne, `data/`, `models/` et `predictions/` sont versionnés : le
 robot ne reconstruit rien, il ne fait que l'incrément du jour. Côté réglages
 du dépôt, GitHub Pages a « GitHub Actions » comme source.
+
+`ci.yml` fait tourner `make lint` et `make test` à chaque push sur `main` et
+sur chaque PR. Il ignore les commits qui ne touchent que `data/`,
+`predictions/` et `site/` : ceux du robot, qu'aucun test ne lit.
 
 ### Quand la source tombe
 
