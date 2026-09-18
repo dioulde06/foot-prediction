@@ -390,6 +390,23 @@ n'est reproposé : poser un pari n'est pas une raison d'en recevoir un autre.
 Les issues déjà misées portent un ✓ vert dans la liste des matchs. Aucun bookmaker régulé n'offre d'API de placement, et automatiser un
 compte viole leurs conditions.
 
+### Les trois états d'un match
+
+`stateOf`, dans le script de la page, range chaque match en `open`, `live` ou
+`done`, et tout le reste en découle : la liste où il apparaît, les compteurs,
+le pool du combinateur, le règlement des paris.
+
+Deux bornes, et les deux comptent. En bas, un match dont aucune source ne donne
+l'heure de coup d'envoi est placé à la fin de sa journée — `new Date(null)`
+renvoyait l'epoch, ce qui affichait vingt matchs « En cours » pour toujours,
+dont quatre à venir. En haut, un match est terminé `PLAY_MS` après le coup
+d'envoi, résultat officiel ou non : celui-ci n'arrive que deux fois par jour,
+et « En cours » trois jours après le coup de sifflet final est un mensonge. Un
+match terminé sans résultat le dit, plutôt que d'afficher un score vide.
+
+`tests/test_state.py` extrait ce bloc du gabarit et le fait tourner sous node :
+c'est le code que le visiteur exécute qui est vérifié, pas une copie.
+
 ### Les scores en direct
 
 Le résultat officiel vient de football-data.co.uk, qui ne rafraîchit son

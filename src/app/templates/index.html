@@ -790,16 +790,39 @@ const moveLine = (m) => (m.odds && m.oddsFirst && OUT.some((_, i) => move(m, i))
 const legQ = (m, o) => m.odds ? m.market[o] : m.model[o];
 
 /* ---- time ---- */
+/* STATE-LOGIC-START -- extracted and run by tests/test_state.py under node.
+   Keep this block self-contained: it may only read NOW and PLAY_MS. */
 let NOW = Date.now();
-const kick = (m) => new Date(m.kickoff);
-const timeLocal = (m) => kick(m).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-const stateOf = (m) => m.result ? "done" : (kick(m).getTime() <= NOW ? "live" : "open");
+/* Ninety minutes, half time, stoppage, and enough slack for a delayed start.
+   The live poll uses the same span to decide when to wake up. */
+const PLAY_MS = 165 * 6e4;
+/* A fixture the sources give no time for is placed at the very end of its day.
+   Midday would call a match live hours before it kicks off; the epoch -- what
+   `new Date(null)` returns -- called twenty of them live for good. */
+const kickMs = (m) => m.kickoff ? Date.parse(m.kickoff) : Date.parse(`${m.date}T23:59:59Z`);
+const kick = (m) => new Date(kickMs(m));
+/* Three states, and the upper bound matters as much as the lower one: the
+   official result lands twice a day, so between the final whistle and the next
+   publication a match has no result yet and is still over. Saying "En cours"
+   there is a lie the page told for days. */
+const stateOf = (m) => {
+  if (m.result) return "done";
+  const k = kickMs(m);
+  if (NOW < k) return "open";
+  return NOW < k + PLAY_MS ? "live" : "done";
+};
+/* STATE-LOGIC-END */
+const timeLocal = (m) => m.kickoff ? kick(m).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—";
 /* Score between the team names, state under the time: a finished match reads
    like a result, not like a price list with a caption on top of it. */
 const scoreOf = (m) => m.score ? m.score.replace("-", " – ") : null;
 const stateLabel = (m) => {
   const st = stateOf(m);
-  if (st === "done") return `<em class="st">Terminé${m.provisional ? ` <i class="lv">direct</i>` : ""}</em>`;
+  // A match can be over without its result having reached us: the official one
+  // lands twice a day. Say so rather than show a blank where a score goes.
+  if (st === "done") return m.result
+    ? `<em class="st">Terminé${m.provisional ? ` <i class="lv">direct</i>` : ""}</em>`
+    : `<em class="st">Terminé <small>résultat en attente</small></em>`;
   if (st === "live") return `<em class="st on">${m.live ? esc(m.live) : "En cours"} <i class="lv on">direct</i></em>`;
   return countdown(m) ? `<em class="cd">${countdown(m)}</em>` : "";
 };
@@ -907,19 +930,22 @@ function renderBins() {
 function renderFilters() {
   const all = scoped(), vis = visible(), pl = pool();
   const days = [...new Set(all.map((m) => m.date))];
-  const open = DATA.upcoming.filter((m) => stateOf(m) === "open");
-  const done = DATA.upcoming.filter((m) => stateOf(m) === "done");
+  // One count per list, and the title counts the list it sits above. These used
+  // to be computed three different ways and disagreed on screen.
+  const nOpen = DATA.upcoming.filter((m) => stateOf(m) !== "done").length;
+  const nDone = DATA.upcoming.length - nOpen;
   const live = DATA.upcoming.filter((m) => stateOf(m) === "live").length;
-  document.getElementById("n-matchs").textContent = open.length;
-  document.getElementById("n-open").textContent = open.length + live;
-  document.getElementById("n-done").textContent = done.length;
+  document.getElementById("n-matchs").textContent = nOpen;
+  document.getElementById("n-open").textContent = nOpen;
+  document.getElementById("n-done").textContent = nDone;
   document.getElementById("month-title").textContent = board === "done"
-    ? `${done.length} matchs terminés`
-    : `${open.length} matchs à venir`;
-  const priced = open.filter((m) => m.odds).length;
+    ? `${all.length} matchs terminés`
+    : `${all.length} matchs à venir`;
+  const priced = all.filter((m) => m.odds).length;
+  const pending = all.filter((m) => stateOf(m) === "done" && !m.result).length;
   document.getElementById("month-sub").innerHTML = board === "done"
-    ? `${days.length} jours · résultats des ${DATA.meta.live.windowDays} derniers jours · affichés <b>${vis.length}</b>`
-    : `${days.length} jours · ${priced} cotés, ${open.length - priced} pas encore${live ? ` · ${live} en cours` : ""} · affichés <b>${vis.length}</b>`;
+    ? `${days.length} jours · résultats des ${DATA.meta.live.windowDays} derniers jours${pending ? ` · ${pending} en attente de résultat` : ""} · affichés <b>${vis.length}</b>`
+    : `${days.length} jours · ${priced} cotés, ${all.length - priced} pas encore${live ? ` · ${live} en cours` : ""} · affichés <b>${vis.length}</b>`;
   document.getElementById("pool-sub").innerHTML = `Parmi les <b>${pl.length}</b> matchs de l'onglet Matchs, avec ses filtres. Des combinaisons, pas des conseils : toutes perdent en moyenne.`;
   document.getElementById("days").innerHTML = [
     `<button type="button" class="chip" data-day="all" aria-pressed="${dayFilter === "all"}">Tout <em>${all.length}</em></button>`,
@@ -1731,7 +1757,6 @@ const fixtures = new Map(DATA.upcoming.map((m) => [`${m.home}|${m.away}`, m]));
 const TEAMS = new Set(DATA.upcoming.flatMap((m) => [m.home, m.away]));
 DATA.upcoming.forEach((m) => { m.official = m.result !== null; m.live = null; m.provisional = false; });
 let liveAt = null, liveMiss = 0, liveClash = 0, liveDown = 0, liveTimer = null;
-const PLAY_MS = 165 * 6e4;
 
 const ymd = (offset) => new Date(Date.parse(`${DATA.meta.today}T12:00:00Z`) + offset * 864e5).toISOString().slice(0, 10).replace(/-/g, "");
 const liveUrl = (slug) => `${LIVE.base}/${slug}/scoreboard?dates=${ymd(-LIVE.windowDays)}-${ymd(1)}&limit=1000`;
