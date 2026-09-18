@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+from typing import Any
 
 import polars as pl
 import pytest
@@ -151,7 +152,7 @@ def _scorers(day: int) -> pl.DataFrame:
     return pl.concat([home, away])
 
 
-def build(**kw: object) -> dict:
+def build(**kw: object) -> dict[str, Any]:
     args = {
         "predictions": _predictions(5),
         "odds": _odds(5),

@@ -72,7 +72,9 @@ def test_expected_goals_split_the_home_factor_symmetrically() -> None:
         "np_xg_created_5_away": 1.0,
         "np_xg_conceded_5_home": 1.0,
     }
-    home, away = sc.expected_goals(row, PRIOR)
+    goals = sc.expected_goals(row, PRIOR)
+    assert goals is not None
+    home, away = goals
     assert home == pytest.approx(1.6 * math.sqrt(1.21))
     assert away == pytest.approx(1.0 / math.sqrt(1.21))
 
