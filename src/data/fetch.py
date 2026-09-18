@@ -18,6 +18,7 @@ import argparse
 import datetime as dt
 import logging
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -32,6 +33,11 @@ UNDERSTAT_PARQUET = RAW_DIR / "understat.parquet"
 BASE_URL = "https://www.football-data.co.uk/mmz4281"
 USER_AGENT = "foot-prediction/0.1 (research; contact via github.com/dioulde06)"
 REQUEST_DELAY_S = 1.0
+
+# A transient 503 from football-data used to cost a whole publication. Four
+# attempts spread over ~35s outlast a blip without hiding a real outage.
+DOWNLOAD_ATTEMPTS = 4
+DOWNLOAD_BACKOFF_S = 5.0
 
 # A season opens in this month; anything earlier belongs to the previous one.
 SEASON_START_MONTH = 7
@@ -182,12 +188,43 @@ def replace_season(
     return pl.concat([kept, fresh.select(kept.columns)])
 
 
-def _download(url: str) -> bytes:
+def _fetch_once(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
         if response.status != 200:
             raise RuntimeError(f"{url} returned HTTP {response.status}")
         return bytes(response.read())
+
+
+def _download(url: str) -> bytes:
+    """Download `url`, retrying the failures that are worth retrying.
+
+    football-data.co.uk answers 503 under load and sometimes refuses the
+    connection outright. Those blips are the only thing that has ever broken
+    the daily job, and they cost a whole publication each time because every
+    later step depends on this one.
+
+    A 4xx is an answer, not a blip: it is raised on the first attempt. A source
+    that stays down still crashes the job on the last one -- publishing stale
+    data as fresh would be worse than not publishing.
+    """
+    for attempt in range(DOWNLOAD_ATTEMPTS - 1):
+        try:
+            return _fetch_once(url)
+        except (urllib.error.HTTPError, urllib.error.URLError) as err:
+            if isinstance(err, urllib.error.HTTPError) and err.code < 500:
+                raise
+            wait = DOWNLOAD_BACKOFF_S * 2**attempt
+            LOG.warning(
+                "%s: %s, nouvel essai dans %.0fs (%d/%d)",
+                url,
+                err,
+                wait,
+                attempt + 1,
+                DOWNLOAD_ATTEMPTS - 1,
+            )
+            time.sleep(wait)
+    return _fetch_once(url)
 
 
 def _as_nullable_str(name: str) -> pl.Expr:

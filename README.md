@@ -469,6 +469,17 @@ Pour que ça tourne, `data/`, `models/` et `predictions/` sont versionnés : le
 robot ne reconstruit rien, il ne fait que l'incrément du jour. Côté réglages
 du dépôt, GitHub Pages a « GitHub Actions » comme source.
 
+### Quand la source tombe
+
+Toutes les pannes du robot à ce jour viennent du même endroit :
+football-data.co.uk répond 503 sous charge, ou refuse la connexion. Comme
+`make fetch-current` est la première étape, un hoquet de quelques minutes
+coûtait la publication entière. `_download` réessaie donc quatre fois, avec
+un délai qui double (5s, 10s, 20s). Un 4xx n'est pas un hoquet mais une
+réponse : il remonte au premier essai. Une source durablement tombée fait
+toujours échouer le job — publier des données périmées comme fraîches serait
+pire que ne pas publier.
+
 ### La saison glissante
 
 La dernière saison ingérée se déduit du calendrier (coupure en juillet), plus

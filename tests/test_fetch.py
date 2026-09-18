@@ -1,11 +1,26 @@
 """Checks on the ingestion helpers that do not need the network."""
 
+from __future__ import annotations
+
 import datetime as dt
+import time
+import urllib.error
+import urllib.request
+from collections.abc import Callable
 
 import polars as pl
 import pytest
 
-from src.data.fetch import _check_integrity, _parse_csv, season_code, season_label
+from src.data.fetch import (
+    DOWNLOAD_ATTEMPTS,
+    _check_integrity,
+    _download,
+    _parse_csv,
+    season_code,
+    season_label,
+)
+
+URL = "https://www.football-data.co.uk/mmz4281/2627/E0.csv"
 
 HEADER = "Div,Date,Time,HomeTeam,AwayTeam,FTHG,FTAG,FTR,HS,AS,HST,AST,HC,AC,PSCH,PSCD,PSCA,B365CH,B365CD,B365CA,AvgCH,AvgCD,AvgCA"
 
@@ -129,3 +144,83 @@ def test_a_book_missing_from_a_season_file_parses_as_null_odds() -> None:
     assert frame["odds_close_ps_h"][0] is None
     assert frame["odds_close_avg_h"][0] == 1.31
     assert frame["home_goals"][0] == 4
+
+
+class _Response:
+    """Minimal stand-in for what urlopen returns, as a context manager."""
+
+    status = 200
+
+    def __init__(self, body: bytes) -> None:
+        self._body = body
+
+    def __enter__(self) -> _Response:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self._body
+
+
+def _urlopen_returning(
+    answers: list[object], seen: list[int]
+) -> Callable[..., _Response]:
+    """An urlopen that replays `answers` in order, raising the ones that are
+    exceptions and counting the calls into `seen`."""
+
+    def urlopen(*_: object, **__: object) -> _Response:
+        seen.append(1)
+        answer = answers[len(seen) - 1]
+        if isinstance(answer, Exception):
+            raise answer
+        assert isinstance(answer, _Response)
+        return answer
+
+    return urlopen
+
+
+def test_download_retries_a_transient_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every daily job that ever failed died on a 503 from football-data. A blip
+    must not take the run down."""
+    seen: list[int] = []
+    answers: list[object] = [
+        urllib.error.HTTPError(URL, 503, "unavailable", {}, None),  # type: ignore[arg-type]
+        urllib.error.URLError("connection refused"),
+        _Response(b"payload"),
+    ]
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_returning(answers, seen))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+
+    assert _download(URL) == b"payload"
+    assert len(seen) == 3
+
+
+def test_download_does_not_retry_a_permanent_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 404 is an answer, not a blip: retrying it only delays the crash."""
+    seen: list[int] = []
+    answers: list[object] = [urllib.error.HTTPError(URL, 404, "gone", {}, None)] * 9  # type: ignore[arg-type]
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_returning(answers, seen))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+
+    with pytest.raises(urllib.error.HTTPError):
+        _download(URL)
+    assert len(seen) == 1, "a 404 must be raised on the first attempt"
+
+
+def test_download_gives_up_loudly(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A source that is down for good still has to crash the job. Stale data
+    published as fresh would be worse than no publication."""
+    seen: list[int] = []
+    answers: list[object] = [
+        urllib.error.HTTPError(URL, 503, "unavailable", {}, None)  # type: ignore[arg-type]
+    ] * 9
+    monkeypatch.setattr(urllib.request, "urlopen", _urlopen_returning(answers, seen))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+
+    with pytest.raises(urllib.error.HTTPError):
+        _download(URL)
+    assert len(seen) == DOWNLOAD_ATTEMPTS
