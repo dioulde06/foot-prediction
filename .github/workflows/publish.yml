@@ -50,7 +50,9 @@ jobs:
             echo "nothing new today"
           else
             git commit -m "chore: publish $(date -u +'%Y-%m-%d %H:%M UTC')"
-            git push
+            # A push of your own between checkout and here would reject this
+            # one. Rebase and retry once; a second failure is a real problem.
+            git push || (git pull --rebase && git push)
           fi
 
       - uses: actions/upload-pages-artifact@v5
